@@ -2,9 +2,25 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
+import { useState, useRef, useEffect } from 'react'
 
 export function Navbar() {
   const { data: session, status } = useSession()
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   if (status === 'loading') {
     return (
@@ -54,8 +70,11 @@ export function Navbar() {
 
           <div className="flex items-center space-x-4">
             {session ? (
-              <>
-                <div className="flex items-center space-x-3">
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   {session.user?.image && (
                     <img
                       className="h-8 w-8 rounded-full"
@@ -63,17 +82,46 @@ export function Navbar() {
                       alt={session.user.name || 'User'}
                     />
                   )}
-                  <span className="text-sm font-medium text-gray-900">
-                    {session.user?.name}
-                  </span>
-                </div>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
-                  className="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium"
-                >
-                  Sign out
+                  <span>{session.user?.name}</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
-              </>
+
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border">
+                    <Link
+                      href="/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      href="/settings"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      Settings
+                    </Link>
+                    <div className="border-t border-gray-100"></div>
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false)
+                        signOut({ callbackUrl: '/' })
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <Link
                 href="/signin"

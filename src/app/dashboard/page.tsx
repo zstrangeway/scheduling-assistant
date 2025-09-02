@@ -1,6 +1,8 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import { db } from '@/lib/db'
+import Link from 'next/link'
 
 export default async function Dashboard() {
   const session = await getServerSession(authOptions)
@@ -8,6 +10,26 @@ export default async function Dashboard() {
   if (!session) {
     redirect('/signin')
   }
+
+  const userStats = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      _count: {
+        select: {
+          ownedGroups: true,
+          memberships: true,
+          createdEvents: true,
+          responses: true,
+        }
+      }
+    }
+  })
+
+  const totalGroups = (userStats?._count.ownedGroups || 0) + (userStats?._count.memberships || 0)
+  
+  // Get upcoming events (this will be enhanced in later phases)
+  const upcomingEvents = 0
+  const pendingInvites = 0
 
   return (
     <div className="space-y-6">
@@ -39,7 +61,7 @@ export default async function Dashboard() {
                     Groups
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    0
+                    {totalGroups}
                   </dd>
                 </dl>
               </div>
@@ -63,7 +85,7 @@ export default async function Dashboard() {
                     Upcoming Events
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    0
+                    {upcomingEvents}
                   </dd>
                 </dl>
               </div>
@@ -87,7 +109,7 @@ export default async function Dashboard() {
                     Pending Invites
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    0
+                    {pendingInvites}
                   </dd>
                 </dl>
               </div>
@@ -106,13 +128,19 @@ export default async function Dashboard() {
               Welcome to Availability Helper! Get started by creating your first group or accepting an invitation.
             </p>
           </div>
-          <div className="mt-5">
+          <div className="mt-5 flex space-x-3">
             <button
               type="button"
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
             >
               Create your first group
             </button>
+            <Link
+              href="/profile"
+              className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Complete Profile
+            </Link>
           </div>
         </div>
       </div>
