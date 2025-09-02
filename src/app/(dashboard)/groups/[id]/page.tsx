@@ -5,6 +5,8 @@ import { db } from '@/lib/db'
 import Link from 'next/link'
 import { GroupActions } from './group-actions'
 import { InviteMembersButton } from './invite-members-button'
+import { CreateEventButton } from './create-event-button'
+import { EventList } from '@/components/event-list'
 
 interface GroupPageProps {
   params: {
@@ -56,25 +58,31 @@ export default async function GroupPage({ params }: GroupPageProps) {
         }
       },
       events: {
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          startTime: true,
-          endTime: true,
-          createdAt: true,
+        include: {
           creator: {
             select: {
               id: true,
               name: true,
               email: true,
+              image: true,
+            }
+          },
+          responses: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                }
+              }
             }
           }
         },
         orderBy: {
-          startTime: 'desc'
-        },
-        take: 10
+          startTime: 'asc'
+        }
       },
       invites: {
         select: {
@@ -317,75 +325,36 @@ export default async function GroupPage({ params }: GroupPageProps) {
         </div>
       )}
 
-      {/* Recent Events */}
+      {/* Events */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Recent Events ({group._count.events})
+              Events ({group._count.events})
             </h3>
-            <button
-              type="button"
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <svg className="-ml-0.5 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Create Event
-            </button>
+            {(isOwner || isMember) && (
+              <CreateEventButton groupId={group.id} />
+            )}
           </div>
           
-          {group.events.length === 0 ? (
-            <div className="text-center py-6">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No events yet</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Get started by creating your first event.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {group.events.map((event) => (
-                <div key={event.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-gray-900">
-                        {event.title}
-                      </h4>
-                      {event.description && (
-                        <p className="mt-1 text-sm text-gray-600">
-                          {event.description}
-                        </p>
-                      )}
-                      <div className="mt-2 flex items-center text-xs text-gray-500">
-                        <div className="flex items-center">
-                          <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          {new Date(event.startTime).toLocaleDateString()} {new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                        <div className="ml-4">
-                          Created by {event.creator.name || event.creator.email}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <EventList 
+            groupId={group.id}
+            events={group.events.map(event => ({
+              id: event.id,
+              title: event.title,
+              description: event.description,
+              startTime: event.startTime.toISOString(),
+              endTime: event.endTime.toISOString(),
+              creator: event.creator,
+              responseCount: {
+                available: event.responses.filter(r => r.status === 'AVAILABLE').length,
+                unavailable: event.responses.filter(r => r.status === 'UNAVAILABLE').length,
+                maybe: event.responses.filter(r => r.status === 'MAYBE').length,
+                total: event.responses.length
+              }
+            }))}
+            canCreateEvents={isOwner || isMember}
+          />
         </div>
       </div>
     </div>
