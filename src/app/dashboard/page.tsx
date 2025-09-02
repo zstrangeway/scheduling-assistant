@@ -129,12 +129,12 @@ export default async function Dashboard() {
             </p>
           </div>
           <div className="mt-5 flex space-x-3">
-            <button
-              type="button"
+            <Link
+              href="/groups"
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
             >
               Create your first group
-            </button>
+            </Link>
             <Link
               href="/profile"
               className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-md text-sm font-medium"
