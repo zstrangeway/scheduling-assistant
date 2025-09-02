@@ -35,13 +35,13 @@ Building a comprehensive group scheduling and availability coordination web appl
 - [x] Group settings and configuration UI
 - [x] Group deletion and leave group functionality
 
-### Phase 5: Invitation System (Frontend + Backend)
-- [ ] Invitation API endpoints (send, accept, decline)
-- [ ] Email invitation system with Resend
-- [ ] Invite members form within group page
-- [ ] Invitation acceptance/decline pages
-- [ ] Invitation status tracking UI
-- [ ] Bulk invitation interface
+### Phase 5: Invitation System (Frontend + Backend) ✅
+- [x] Invitation API endpoints (send, accept, decline)
+- [x] Email invitation system with Resend
+- [x] Invite members form within group page
+- [x] Invitation acceptance/decline pages
+- [x] Invitation status tracking UI
+- [x] Bulk invitation interface
 
 ### Phase 6: Event Creation & Management (Frontend + Backend)
 - [ ] Event CRUD API endpoints
@@ -106,7 +106,7 @@ Building a comprehensive group scheduling and availability coordination web appl
 
 ## Current Status
 
-### ✅ Completed (Phase 1-4)
+### ✅ Completed (Phase 1-5)
 - Project initialization with Next.js
 - Docker Compose PostgreSQL setup
 - Complete Prisma schema design
@@ -128,11 +128,18 @@ Building a comprehensive group scheduling and availability coordination web appl
 - Group settings page with form validation
 - Group deletion and leave group functionality
 - Modal-based create group form with validation
+- Complete invitation system with email integration
+- Invitation API endpoints (send, accept, decline, list)
+- Email invitation system using Resend API
+- Multi-email invitation form with validation and duplicate detection
+- Invitation acceptance/decline pages with secure token handling
+- Real-time invitation status tracking in group pages
+- Bulk invitation interface supporting up to 10 emails at once
 
-### ⏳ Next Up (Phase 5)
-- Invitation system for adding members to groups
-- Email invitations with Resend integration
-- Invitation acceptance/decline workflow
+### ⏳ Next Up (Phase 6)
+- Event creation and management system
+- Event CRUD API endpoints with date/time handling
+- Event creation form with date/time picker components
 
 ## Key Milestones
 

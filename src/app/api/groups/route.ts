@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-function validateCreateGroupData(data: any) {
+function validateCreateGroupData(data: Record<string, unknown>) {
   if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
     throw new Error('Group name is required')
   }

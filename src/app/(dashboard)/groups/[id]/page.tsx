@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import Link from 'next/link'
 import { GroupActions } from './group-actions'
+import { InviteMembersButton } from './invite-members-button'
 
 interface GroupPageProps {
   params: {
@@ -75,6 +76,24 @@ export default async function GroupPage({ params }: GroupPageProps) {
         },
         take: 10
       },
+      invites: {
+        select: {
+          id: true,
+          email: true,
+          status: true,
+          createdAt: true,
+          expiresAt: true,
+          sender: {
+            select: {
+              name: true,
+              email: true,
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      },
       _count: {
         select: {
           members: true,
@@ -89,8 +108,8 @@ export default async function GroupPage({ params }: GroupPageProps) {
     notFound()
   }
 
-  const isOwner = group.owner.id === session.user.id
-  const currentUserMembership = group.members.find(m => m.user.id === session.user.id)
+  const isOwner = group.owner.id === (session.user as any).id
+  const currentUserMembership = group.members.find(m => m.user.id === (session.user as any).id)
   const isMember = !!currentUserMembership
 
   // Calculate total members (owner + explicit members)
@@ -147,7 +166,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
             group={group}
             isOwner={isOwner}
             isMember={isMember}
-            currentUserId={session.user.id}
+            currentUserId={(session.user as any).id}
           />
         </div>
       </div>
@@ -160,15 +179,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
               Members ({totalMembers})
             </h3>
             {isOwner && (
-              <button
-                type="button"
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <svg className="-ml-0.5 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Invite Members
-              </button>
+              <InviteMembersButton groupId={group.id} groupName={group.name} />
             )}
           </div>
           
@@ -228,6 +239,83 @@ export default async function GroupPage({ params }: GroupPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Pending Invitations - Only show to owners */}
+      {isOwner && group.invites.length > 0 && (
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+              Pending Invitations ({group.invites.filter(i => i.status === 'PENDING').length})
+            </h3>
+            
+            <div className="space-y-3">
+              {group.invites
+                .filter(invite => invite.status === 'PENDING' && new Date(invite.expiresAt) > new Date())
+                .map((invite) => (
+                <div key={invite.id} className="flex items-center justify-between py-3 border-b border-gray-200 last:border-b-0">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{invite.email}</p>
+                    <p className="text-xs text-gray-500">
+                      Invited {new Date(invite.createdAt).toLocaleDateString()} • 
+                      Expires {new Date(invite.expiresAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      Pending
+                    </span>
+                  </div>
+                </div>
+              ))}
+              
+              {group.invites.filter(invite => invite.status !== 'PENDING' || new Date(invite.expiresAt) <= new Date()).length > 0 && (
+                <details className="mt-4">
+                  <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+                    Show processed invitations ({group.invites.filter(invite => invite.status !== 'PENDING' || new Date(invite.expiresAt) <= new Date()).length})
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {group.invites
+                      .filter(invite => invite.status !== 'PENDING' || new Date(invite.expiresAt) <= new Date())
+                      .map((invite) => (
+                      <div key={invite.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-700">{invite.email}</p>
+                          <p className="text-xs text-gray-400">
+                            {invite.status === 'EXPIRED' || new Date(invite.expiresAt) <= new Date() 
+                              ? 'Expired' 
+                              : invite.status === 'ACCEPTED' 
+                                ? 'Accepted' 
+                                : 'Declined'
+                            } • {new Date(invite.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          invite.status === 'ACCEPTED' || (invite.status === 'PENDING' && new Date(invite.expiresAt) <= new Date() && invite.status === 'ACCEPTED')
+                            ? 'bg-green-100 text-green-800'
+                            : invite.status === 'DECLINED'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {new Date(invite.expiresAt) <= new Date() && invite.status === 'PENDING' 
+                            ? 'Expired' 
+                            : invite.status.toLowerCase()
+                          }
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+            
+            {group.invites.filter(i => i.status === 'PENDING' && new Date(i.expiresAt) > new Date()).length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No pending invitations
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Recent Events */}
       <div className="bg-white shadow rounded-lg">

@@ -142,12 +142,26 @@ export default async function GroupsPage() {
 }
 
 interface GroupCardProps {
-  group: any
+  group: {
+    id: string
+    name: string
+    description?: string | null
+    owner: {
+      id: string
+      name?: string | null
+      email: string
+    }
+    _count: {
+      members: number
+      events: number
+    }
+    createdAt: Date | string
+  }
   isOwner: boolean
   currentUserId: string
 }
 
-function GroupCard({ group, isOwner, currentUserId }: GroupCardProps) {
+function GroupCard({ group, isOwner }: GroupCardProps) {
   const totalMembers = group._count.members + (isOwner ? 1 : 0) // Owner + members
 
   return (

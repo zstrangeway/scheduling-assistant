@@ -74,7 +74,7 @@ export default async function GroupSettingsPage({ params }: GroupSettingsPagePro
           </h2>
         </div>
         <p className="mt-1 text-sm text-gray-500">
-          Configure settings for "{group.name}"
+          Configure settings for &quot;{group.name}&quot;
         </p>
       </div>
 

@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-function validateUpdateGroupData(data: any) {
-  const updates: any = {}
+function validateUpdateGroupData(data: Record<string, unknown>) {
+  const updates: Record<string, unknown> = {}
   
   if (data.name !== undefined) {
     if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
@@ -17,10 +17,10 @@ function validateUpdateGroupData(data: any) {
   }
   
   if (data.description !== undefined) {
-    if (data.description && data.description.length > 500) {
+    if (data.description && typeof data.description === 'string' && data.description.length > 500) {
       throw new Error('Description must be less than 500 characters')
     }
-    updates.description = data.description?.trim() || null
+    updates.description = typeof data.description === 'string' ? data.description.trim() || null : null
   }
   
   return updates

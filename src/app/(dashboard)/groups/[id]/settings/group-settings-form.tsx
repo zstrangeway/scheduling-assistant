@@ -4,7 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface GroupSettingsFormProps {
-  group: any
+  group: {
+    id: string
+    name: string
+    description?: string | null
+  }
   isOwner: boolean
 }
 

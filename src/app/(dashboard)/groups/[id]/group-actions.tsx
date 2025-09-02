@@ -5,13 +5,17 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 interface GroupActionsProps {
-  group: any
+  group: {
+    id: string
+    name: string
+    ownerId: string
+  }
   isOwner: boolean
   isMember: boolean
   currentUserId: string
 }
 
-export function GroupActions({ group, isOwner, isMember, currentUserId }: GroupActionsProps) {
+export function GroupActions({ group, isOwner, isMember }: GroupActionsProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
@@ -115,7 +119,7 @@ export function GroupActions({ group, isOwner, isMember, currentUserId }: GroupA
                   <h3 className="text-base font-semibold leading-6 text-gray-900">Delete Group</h3>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      Are you sure you want to delete "{group.name}"? This action cannot be undone. All events and member data will be permanently removed.
+                      Are you sure you want to delete &quot;{group.name}&quot;? This action cannot be undone. All events and member data will be permanently removed.
                     </p>
                   </div>
                 </div>
@@ -160,7 +164,7 @@ export function GroupActions({ group, isOwner, isMember, currentUserId }: GroupA
                   <h3 className="text-base font-semibold leading-6 text-gray-900">Leave Group</h3>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      Are you sure you want to leave "{group.name}"? You will need to be re-invited to rejoin this group.
+                      Are you sure you want to leave &quot;{group.name}&quot;? You will need to be re-invited to rejoin this group.
                     </p>
                   </div>
                 </div>
