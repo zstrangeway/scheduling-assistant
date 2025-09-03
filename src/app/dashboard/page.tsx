@@ -1,149 +1,167 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
-import { db } from '@/lib/db'
-import Link from 'next/link'
+"use client";
 
-export default async function Dashboard() {
-  const session = await getServerSession(authOptions)
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
+import { useEffect } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, Calendar, Mail } from "lucide-react";
+import { useDashboardStore } from "@/stores/dashboard.store";
 
-  if (!session) {
-    redirect('/signin')
+export default function Dashboard() {
+  const { data: session, status } = useSession();
+  const {
+    data: dashboardData,
+    loading,
+    error,
+    fetchDashboardData,
+    reset,
+  } = useDashboardStore();
+
+  useEffect(() => {
+    if (status === "loading") return;
+
+    if (!session) {
+      redirect("/signin");
+      return;
+    }
+
+    fetchDashboardData();
+  }, [session, status, fetchDashboardData]);
+
+  useEffect(() => {
+    return () => {
+      reset();
+    };
+  }, []);
+
+  if (status === "loading" || loading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded w-1/3 mb-2"></div>
+          <div className="h-4 bg-muted rounded w-1/2"></div>
+        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="animate-pulse flex items-center">
+                  <div className="w-8 h-8 bg-muted rounded-lg"></div>
+                  <div className="ml-5 flex-1">
+                    <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
+                    <div className="h-6 bg-muted rounded w-1/3"></div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
-  const userStats = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      _count: {
-        select: {
-          ownedGroups: true,
-          memberships: true,
-          createdEvents: true,
-          responses: true,
-        }
-      }
-    }
-  })
-
-  const totalGroups = (userStats?._count.ownedGroups || 0) + (userStats?._count.memberships || 0)
-  
-  // Get upcoming events (this will be enhanced in later phases)
-  const upcomingEvents = 0
-  const pendingInvites = 0
+  if (!session) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
       <div className="md:flex md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
-          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl">
+          <h2 className="text-2xl font-bold leading-7 sm:truncate sm:text-3xl">
             Welcome back, {session.user?.name}!
           </h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage your groups and coordinate schedules
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Groups
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {totalGroups}
-                  </dd>
-                </dl>
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-primary-foreground" />
               </div>
             </div>
-          </div>
-        </div>
+            <div className="ml-5 w-0 flex-1">
+              <dl>
+                <dt className="text-sm font-medium text-muted-foreground truncate">
+                  Groups
+                </dt>
+                <dd className="text-lg font-medium">
+                  {dashboardData?.totalGroups || 0}
+                </dd>
+              </dl>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Upcoming Events
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {upcomingEvents}
-                  </dd>
-                </dl>
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-secondary-foreground" />
               </div>
             </div>
-          </div>
-        </div>
+            <div className="ml-5 w-0 flex-1">
+              <dl>
+                <dt className="text-sm font-medium text-muted-foreground truncate">
+                  Upcoming Events
+                </dt>
+                <dd className="text-lg font-medium">
+                  {dashboardData?.upcomingEvents || 0}
+                </dd>
+              </dl>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Pending Invites
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {pendingInvites}
-                  </dd>
-                </dl>
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
+                <Mail className="w-5 h-5 text-accent-foreground" />
               </div>
             </div>
-          </div>
-        </div>
+            <div className="ml-5 w-0 flex-1">
+              <dl>
+                <dt className="text-sm font-medium text-muted-foreground truncate">
+                  Pending Invites
+                </dt>
+                <dd className="text-lg font-medium">
+                  {dashboardData?.pendingInvites || 0}
+                </dd>
+              </dl>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Getting Started
-          </h3>
-          <div className="mt-2 max-w-xl text-sm text-gray-500">
+      <Card>
+        <CardHeader>
+          <CardTitle>Getting Started</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="max-w-xl text-sm text-muted-foreground">
             <p>
-              Welcome to Availability Helper! Get started by creating your first group or accepting an invitation.
+              Welcome to Availability Helper! Get started by creating your first
+              group or accepting an invitation.
             </p>
           </div>
           <div className="mt-5 flex space-x-3">
-            <Link
-              href="/groups"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Create your first group
-            </Link>
-            <Link
-              href="/profile"
-              className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Complete Profile
-            </Link>
+            <Button asChild>
+              <Link href="/groups">Create your first group</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/profile">Complete Profile</Link>
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }
