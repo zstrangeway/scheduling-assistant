@@ -1,82 +1,80 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { 
-  Button, 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/components'
-import { AlertTriangle } from 'lucide-react'
-import { useGroupDetailStore } from '@/stores/group-detail.store'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui";
+import { AlertTriangle } from "lucide-react";
+import { useGroupDetailStore } from "@/stores/group-detail.store";
 
 interface GroupActionsProps {
   group: {
-    id: string
-    name: string
-    ownerId: string
-  }
-  isOwner: boolean
-  isMember: boolean
-  currentUserId: string
+    id: string;
+    name: string;
+    ownerId: string;
+  };
+  isOwner: boolean;
+  isMember: boolean;
+  currentUserId: string;
 }
 
 export function GroupActions({ group, isOwner, isMember }: GroupActionsProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
-  const { deleteGroup, leaveGroup } = useGroupDetailStore()
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { deleteGroup, leaveGroup } = useGroupDetailStore();
 
   const handleLeaveGroup = async () => {
-    if (!isMember) return
+    if (!isMember) return;
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await leaveGroup(group.id)
-      router.push('/groups')
+      await leaveGroup(group.id);
+      router.push("/groups");
     } catch (error) {
-      console.error('Error leaving group:', error)
+      console.error("Error leaving group:", error);
       // In a real app, you'd show a toast notification here
-      alert(error instanceof Error ? error.message : 'Failed to leave group')
+      alert(error instanceof Error ? error.message : "Failed to leave group");
     } finally {
-      setIsLoading(false)
-      setShowLeaveConfirm(false)
+      setIsLoading(false);
+      setShowLeaveConfirm(false);
     }
-  }
+  };
 
   const handleDeleteGroup = async () => {
-    if (!isOwner) return
+    if (!isOwner) return;
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await deleteGroup(group.id)
-      router.push('/groups')
+      await deleteGroup(group.id);
+      router.push("/groups");
     } catch (error) {
-      console.error('Error deleting group:', error)
+      console.error("Error deleting group:", error);
       // In a real app, you'd show a toast notification here
-      alert(error instanceof Error ? error.message : 'Failed to delete group')
+      alert(error instanceof Error ? error.message : "Failed to delete group");
     } finally {
-      setIsLoading(false)
-      setShowDeleteConfirm(false)
+      setIsLoading(false);
+      setShowDeleteConfirm(false);
     }
-  }
+  };
 
   return (
     <>
       {isOwner && (
         <Button variant="outline" asChild>
-          <Link href={`/groups/${group.id}/settings`}>
-            Edit Group
-          </Link>
+          <Link href={`/groups/${group.id}/settings`}>Edit Group</Link>
         </Button>
       )}
-      
+
       {isMember && !isOwner && (
         <Button
           variant="outline"
@@ -108,7 +106,9 @@ export function GroupActions({ group, isOwner, isMember }: GroupActionsProps) {
             </div>
           </DialogHeader>
           <DialogDescription>
-            Are you sure you want to delete &quot;{group.name}&quot;? This action cannot be undone. All events and member data will be permanently removed.
+            Are you sure you want to delete &quot;{group.name}&quot;? This
+            action cannot be undone. All events and member data will be
+            permanently removed.
           </DialogDescription>
           <DialogFooter>
             <Button
@@ -123,7 +123,7 @@ export function GroupActions({ group, isOwner, isMember }: GroupActionsProps) {
               onClick={handleDeleteGroup}
               disabled={isLoading}
             >
-              {isLoading ? 'Deleting...' : 'Delete Group'}
+              {isLoading ? "Deleting..." : "Delete Group"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -141,7 +141,8 @@ export function GroupActions({ group, isOwner, isMember }: GroupActionsProps) {
             </div>
           </DialogHeader>
           <DialogDescription>
-            Are you sure you want to leave &quot;{group.name}&quot;? You will need to be re-invited to rejoin this group.
+            Are you sure you want to leave &quot;{group.name}&quot;? You will
+            need to be re-invited to rejoin this group.
           </DialogDescription>
           <DialogFooter>
             <Button
@@ -156,11 +157,11 @@ export function GroupActions({ group, isOwner, isMember }: GroupActionsProps) {
               onClick={handleLeaveGroup}
               disabled={isLoading}
             >
-              {isLoading ? 'Leaving...' : 'Leave Group'}
+              {isLoading ? "Leaving..." : "Leave Group"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

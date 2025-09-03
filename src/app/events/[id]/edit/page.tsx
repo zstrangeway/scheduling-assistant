@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect, notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import Link from 'next/link'
-import { EditEventForm } from '@/components/edit-event-form'
+import { EditEventForm } from '@/components/features/events'
 
 interface EditEventPageProps {
   params: {

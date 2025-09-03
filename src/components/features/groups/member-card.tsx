@@ -1,4 +1,4 @@
-import { Avatar, AvatarImage, AvatarFallback, Badge } from "@/components";
+import { Avatar, AvatarImage, AvatarFallback, Badge } from "@/components/ui";
 
 interface User {
   id: string;
@@ -14,13 +14,20 @@ interface MemberCardProps {
   isOwner?: boolean;
 }
 
-export function MemberCard({ user, role, joinedAt, isOwner = false }: MemberCardProps) {
+export function MemberCard({
+  user,
+  role,
+  joinedAt,
+  isOwner = false,
+}: MemberCardProps) {
   return (
     <div className="flex items-center justify-between py-3 border-b last:border-b-0">
       <div className="flex items-center space-x-3">
         <Avatar className="h-10 w-10">
           <AvatarImage src={user.image || ""} alt={user.name || ""} />
-          <AvatarFallback>{user.name?.charAt(0) || user.email.charAt(0)}</AvatarFallback>
+          <AvatarFallback>
+            {user.name?.charAt(0) || user.email.charAt(0)}
+          </AvatarFallback>
         </Avatar>
         <div>
           <p className="text-sm font-medium">{user.name || user.email}</p>

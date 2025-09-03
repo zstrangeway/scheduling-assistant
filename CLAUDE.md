@@ -127,6 +127,44 @@ await sendEmail({
 });
 ```
 
+## Component Organization (Atomic Design)
+
+### Structure
+```
+src/components/
+├── ui/                       # Generic, reusable components (atomic design)
+│   ├── atoms/                # Basic building blocks (button, input, etc.)
+│   ├── molecules/            # Small combinations (cards, form fields)
+│   ├── organisms/            # Complex sections (lists, forms)
+│   ├── templates/            # Layout components
+│   └── index.ts              # Barrel export for all UI components
+├── features/                 # Domain-specific components
+│   ├── groups/               # Group-related components
+│   │   ├── group-actions.tsx
+│   │   ├── member-card.tsx
+│   │   ├── create-group-dialog.tsx
+│   │   └── index.ts
+│   ├── events/               # Event-related components
+│   │   ├── event-list.tsx
+│   │   ├── create-event-dialog.tsx
+│   │   └── index.ts
+│   └── auth/                 # Auth-related components
+│       ├── navbar.tsx
+│       └── index.ts
+└── index.ts                  # Main barrel export
+```
+
+### Principles
+- **UI folder**: Generic, reusable components following atomic design
+- **Features folder**: Domain-specific components with business logic
+- **Dialogs in features**: Each dialog belongs to its respective feature
+- **Clean imports**: Barrel files enable `@/components/ui` and `@/components/features/groups`
+
+### Guidelines
+- Start in features/, move to ui/ when patterns become generic
+- UI components should have no business logic
+- Feature components can import from ui/ but not vice versa
+
 ## Testing Strategy
 - Focus on API route testing
 - Test database operations with test database

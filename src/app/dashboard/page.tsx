@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
-import { Button, Card, CardContent, CardHeader, CardTitle, LoadingSkeleton, ErrorState } from "@/components";
+import { Button, Card, CardContent, CardHeader, CardTitle, LoadingSkeleton, ErrorState } from "@/components/ui";
 import { Users, Calendar, Mail, LucideIcon } from "lucide-react";
 import { useDashboardStore } from "@/stores/dashboard.store";
 

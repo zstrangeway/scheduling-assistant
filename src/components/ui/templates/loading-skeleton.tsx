@@ -1,4 +1,4 @@
-import { Card, CardContent } from "./card";
+import { Card, CardContent } from "../molecules/card";
 
 interface LoadingSkeletonProps {
   variant?: 'cards' | 'list' | 'detail';

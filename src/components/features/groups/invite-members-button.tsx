@@ -1,28 +1,31 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { 
-  Button, 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/components'
-import { Mail, Plus } from 'lucide-react'
-import { InviteMembersForm } from '@/components/invite-members-form'
+import { useState } from "react";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui";
+import { Mail, Plus } from "lucide-react";
+import { InviteMembersForm } from "./invite-members-form";
 
 interface InviteMembersButtonProps {
-  groupId: string
-  groupName: string
+  groupId: string;
+  groupName: string;
 }
 
-export function InviteMembersButton({ groupId, groupName }: InviteMembersButtonProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false)
+export function InviteMembersButton({
+  groupId,
+  groupName,
+}: InviteMembersButtonProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSuccess = () => {
-    setIsModalOpen(false)
-  }
+    setIsModalOpen(false);
+  };
 
   return (
     <>
@@ -39,15 +42,18 @@ export function InviteMembersButton({ groupId, groupName }: InviteMembersButtonP
                 <Mail className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <DialogTitle>Invite Members to &quot;{groupName}&quot;</DialogTitle>
+                <DialogTitle>
+                  Invite Members to &quot;{groupName}&quot;
+                </DialogTitle>
                 <DialogDescription>
-                  Send email invitations to add new members to your group. Invitations will expire in 7 days.
+                  Send email invitations to add new members to your group.
+                  Invitations will expire in 7 days.
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
-          
-          <InviteMembersForm 
+
+          <InviteMembersForm
             groupId={groupId}
             onSuccess={handleSuccess}
             onCancel={() => setIsModalOpen(false)}
@@ -55,5 +61,5 @@ export function InviteMembersButton({ groupId, groupName }: InviteMembersButtonP
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

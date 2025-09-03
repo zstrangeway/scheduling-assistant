@@ -5,32 +5,27 @@ import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { 
-  Button, 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  Badge,
-  Separator,
-  LoadingSkeleton,
-  ErrorState
-} from "@/components";
-import { 
-  Users, 
-  Calendar, 
-  ArrowLeft, 
-  Mail
-} from "lucide-react";
+import { Users, Calendar, ArrowLeft, Mail } from "lucide-react";
 import { useGroupDetailStore } from "@/stores/group-detail.store";
-import { EventList } from "@/components/event-list";
-import { 
-  MemberCard, 
-  InviteCard, 
-  GroupActions, 
-  InviteMembersButton, 
-  CreateEventButton 
-} from "@/components/group-detail";
+import { EventList } from "@/components/features/events";
+import {
+  MemberCard,
+  InviteCard,
+  GroupActions,
+  InviteMembersButton,
+  CreateEventButton,
+} from "@/components/features/groups";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ErrorState,
+  LoadingSkeleton,
+  Separator,
+} from "@/components/ui";
 
 interface GroupMember {
   id: string;
@@ -45,18 +40,11 @@ interface GroupMember {
   };
 }
 
-
 export default function GroupDetailPage() {
   const { data: session, status } = useSession();
   const params = useParams();
   const groupId = params.id as string;
-  const {
-    group,
-    loading,
-    error,
-    fetchGroup,
-    reset,
-  } = useGroupDetailStore();
+  const { group, loading, error, fetchGroup, reset } = useGroupDetailStore();
 
   useEffect(() => {
     if (status === "loading") return;
@@ -81,19 +69,33 @@ export default function GroupDetailPage() {
   }
 
   if (error) {
-    return <ErrorState error={error} title="Error loading group" onRetry={() => fetchGroup(groupId)} />;
+    return (
+      <ErrorState
+        error={error}
+        title="Error loading group"
+        onRetry={() => fetchGroup(groupId)}
+      />
+    );
   }
 
   if (!group) {
-    return <ErrorState error="Group not found" title="Group not found" onRetry={() => fetchGroup(groupId)} />;
+    return (
+      <ErrorState
+        error="Group not found"
+        title="Group not found"
+        onRetry={() => fetchGroup(groupId)}
+      />
+    );
   }
 
   const pendingInvites = group.invites.filter(
-    invite => invite.status === 'PENDING' && new Date(invite.expiresAt) > new Date()
+    (invite) =>
+      invite.status === "PENDING" && new Date(invite.expiresAt) > new Date()
   );
 
   const processedInvites = group.invites.filter(
-    invite => invite.status !== 'PENDING' || new Date(invite.expiresAt) <= new Date()
+    (invite) =>
+      invite.status !== "PENDING" || new Date(invite.expiresAt) <= new Date()
   );
 
   return (
@@ -111,9 +113,7 @@ export default function GroupDetailPage() {
               <h2 className="text-2xl font-bold leading-7 sm:truncate sm:text-3xl">
                 {group.name}
               </h2>
-              {group.isOwner && (
-                <Badge>Owner</Badge>
-              )}
+              {group.isOwner && <Badge>Owner</Badge>}
             </div>
           </div>
           {group.description && (
@@ -124,11 +124,11 @@ export default function GroupDetailPage() {
           <div className="mt-2 flex items-center text-sm text-muted-foreground space-x-4">
             <div className="flex items-center">
               <Users className="h-4 w-4 mr-1" />
-              {group.totalMembers} member{group.totalMembers !== 1 ? 's' : ''}
+              {group.totalMembers} member{group.totalMembers !== 1 ? "s" : ""}
             </div>
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-1" />
-              {group._count.events} event{group._count.events !== 1 ? 's' : ''}
+              {group._count.events} event{group._count.events !== 1 ? "s" : ""}
             </div>
             <div className="text-xs text-muted-foreground">
               Created {new Date(group.createdAt).toLocaleDateString()}
@@ -136,11 +136,11 @@ export default function GroupDetailPage() {
           </div>
         </div>
         <div className="mt-4 flex space-x-3 md:ml-4 md:mt-0">
-          <GroupActions 
+          <GroupActions
             group={{
               id: group.id,
               name: group.name,
-              ownerId: group.owner.id
+              ownerId: group.owner.id,
             }}
             isOwner={group.isOwner}
             isMember={group.isMember}
@@ -162,11 +162,8 @@ export default function GroupDetailPage() {
         <CardContent>
           <div className="space-y-0">
             {/* Owner */}
-            <MemberCard 
-              user={group.owner} 
-              isOwner={true}
-            />
-            
+            <MemberCard user={group.owner} isOwner={true} />
+
             {/* Members */}
             {group.members.map((membership: GroupMember) => (
               <MemberCard
@@ -201,7 +198,7 @@ export default function GroupDetailPage() {
                 No pending invitations
               </p>
             )}
-            
+
             {processedInvites.length > 0 && (
               <>
                 <Separator className="my-4" />
@@ -233,7 +230,7 @@ export default function GroupDetailPage() {
           )}
         </CardHeader>
         <CardContent>
-          <EventList 
+          <EventList
             groupId={group.id}
             events={group.events}
             canCreateEvents={group.isOwner || group.isMember}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { EventResponseForm } from '@/components/event-response-form'
+import { EventResponseForm } from '@/components/features/events'
 
 interface EventResponseButtonProps {
   eventId: string

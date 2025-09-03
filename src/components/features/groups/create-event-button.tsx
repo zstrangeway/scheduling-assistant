@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CreateEventForm } from '@/components/create-event-form'
+import { CreateEventForm } from '@/components/features/events'
 
 interface CreateEventButtonProps {
   groupId: string

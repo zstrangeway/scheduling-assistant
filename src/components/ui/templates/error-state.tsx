@@ -1,6 +1,6 @@
 import { AlertCircle } from "lucide-react";
-import { Button } from "./button";
-import { Card, CardContent } from "./card";
+import { Button } from "../atoms/button";
+import { Card, CardContent } from "../molecules/card";
 
 interface ErrorStateProps {
   error: string;

@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components";
+import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { Users, Mail, Calendar } from "lucide-react";
 
 export default async function Home() {
