@@ -1,40 +1,29 @@
-'use client'
+"use client";
 
-import { useSession, signOut } from 'next-auth/react'
-import Link from 'next/link'
-import { useState, useRef, useEffect } from 'react'
+import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function Navbar() {
-  const { data: session, status } = useSession()
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
+  const { data: session, status } = useSession();
 
   if (status === 'loading') {
     return (
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/" className="text-xl font-bold text-blue-600">
-                Availability Helper
-              </Link>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="animate-pulse bg-gray-200 rounded h-8 w-20"></div>
-            </div>
+      <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center">
+          <Link href="/" className="font-bold text-xl text-primary">
+            Availability Helper
+          </Link>
+          <div className="ml-auto flex items-center space-x-4">
+            <div className="animate-pulse bg-muted rounded h-8 w-20"></div>
           </div>
         </div>
       </nav>
@@ -42,97 +31,75 @@ export function Navbar() {
   }
 
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-blue-600">
-              Availability Helper
+    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto flex h-16 items-center px-6">
+        <Link href="/" className="font-bold text-xl text-primary">
+          Availability Helper
+        </Link>
+        
+        {session && (
+          <nav className="ml-8 flex space-x-8">
+            <Link 
+              href="/dashboard" 
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Dashboard
             </Link>
-            
-            {session && (
-              <div className="ml-10 flex space-x-8">
-                <Link 
-                  href="/dashboard" 
-                  className="text-gray-900 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Dashboard
-                </Link>
-                <Link 
-                  href="/groups" 
-                  className="text-gray-900 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Groups
-                </Link>
-              </div>
-            )}
-          </div>
+            <Link 
+              href="/groups" 
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Groups
+            </Link>
+          </nav>
+        )}
 
-          <div className="flex items-center space-x-4">
-            {session ? (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {session.user?.image && (
-                    <img
-                      className="h-8 w-8 rounded-full"
-                      src={session.user.image}
-                      alt={session.user.name || 'User'}
-                    />
-                  )}
-                  <span>{session.user?.name}</span>
-                  <svg
-                    className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border">
-                    <Link
-                      href="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/settings"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      Settings
-                    </Link>
-                    <div className="border-t border-gray-100"></div>
-                    <button
-                      onClick={() => {
-                        setIsDropdownOpen(false)
-                        signOut({ callbackUrl: '/' })
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Sign out
-                    </button>
+        <div className="ml-auto flex items-center space-x-4">
+          {session ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={session.user?.image || ''} alt={session.user?.name || ''} />
+                    <AvatarFallback>{session.user?.name?.charAt(0) || 'U'}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <div className="flex items-center justify-start gap-2 p-2">
+                  <div className="flex flex-col space-y-1 leading-none">
+                    {session.user?.name && <p className="font-medium">{session.user.name}</p>}
+                    {session.user?.email && (
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                        {session.user.email}
+                      </p>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : (
-              <Link
-                href="/signin"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => signOut({ callbackUrl: '/' })}
+                >
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button asChild>
+              <Link href="/signin">
                 Sign in
               </Link>
-            )}
-          </div>
+            </Button>
+          )}
         </div>
       </div>
     </nav>
-  )
+  );
 }
