@@ -75,10 +75,13 @@ interface GroupDetailStore {
   group: GroupDetail | null
   loading: boolean
   error: string | null
+  inviteLoading: boolean
+  inviteError: string | null
   fetchGroup: (id: string) => Promise<void>
   updateGroup: (id: string, data: { name?: string; description?: string }) => Promise<void>
   deleteGroup: (id: string) => Promise<void>
   leaveGroup: (id: string) => Promise<void>
+  inviteMembers: (groupId: string, emails: string[]) => Promise<{ successful: number; errors: { email: string; error: string }[] }>
   reset: () => void
 }
 
@@ -86,6 +89,8 @@ export const useGroupDetailStore = create<GroupDetailStore>((set, get) => ({
   group: null,
   loading: false,
   error: null,
+  inviteLoading: false,
+  inviteError: null,
 
   fetchGroup: async (id: string) => {
     set({ loading: true, error: null })
@@ -181,5 +186,71 @@ export const useGroupDetailStore = create<GroupDetailStore>((set, get) => ({
     }
   },
 
-  reset: () => set({ group: null, loading: false, error: null }),
+  inviteMembers: async (groupId: string, emails: string[]) => {
+    set({ inviteLoading: true, inviteError: null })
+    
+    try {
+      const results = await Promise.allSettled(
+        emails.map(email =>
+          fetch(`/api/groups/${groupId}/invites`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email }),
+          }).then(async response => {
+            const data = await response.json()
+            if (!response.ok) {
+              throw new Error(data.error || 'Failed to send invitation')
+            }
+            return { email, success: true }
+          }).catch(error => ({
+            email,
+            success: false,
+            error: error.message
+          }))
+        )
+      )
+
+      const successful = results.filter(result => 
+        result.status === 'fulfilled' && result.value.success
+      ).length
+
+      const errors = results
+        .map((result, index) => {
+          if (result.status === 'fulfilled' && !result.value.success) {
+            const failedResult = result.value as { email: string; success: false; error: string }
+            return { email: emails[index], error: failedResult.error }
+          }
+          return null
+        })
+        .filter(Boolean) as { email: string; error: string }[]
+
+      set({ inviteLoading: false })
+      
+      // Refresh group data to show updated invites
+      if (successful > 0) {
+        const currentGroup = get().group
+        if (currentGroup) {
+          get().fetchGroup(currentGroup.id)
+        }
+      }
+      
+      return { successful, errors }
+    } catch (error) {
+      set({ 
+        inviteError: error instanceof Error ? error.message : 'Failed to send invitations',
+        inviteLoading: false 
+      })
+      throw error
+    }
+  },
+
+  reset: () => set({ 
+    group: null, 
+    loading: false, 
+    error: null, 
+    inviteLoading: false, 
+    inviteError: null 
+  }),
 }))

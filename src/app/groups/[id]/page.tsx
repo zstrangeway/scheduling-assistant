@@ -1,17 +1,17 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Users, Calendar, ArrowLeft, Mail } from "lucide-react";
+import { Users, Calendar, ArrowLeft, Mail, Plus } from "lucide-react";
 import { useGroupDetailStore } from "@/stores/group-detail.store";
 import { EventList } from "@/components/features/events";
 import {
   MemberCard,
   InviteCard,
   GroupActions,
-  InviteMembersButton,
+  InviteMembersDialog,
   CreateEventButton,
 } from "@/components/features/groups";
 import {
@@ -44,6 +44,7 @@ export default function GroupDetailPage() {
   const params = useParams();
   const groupId = params.id as string;
   const { group, loading, error, fetchGroup, reset } = useGroupDetailStore();
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (groupId) {
@@ -149,7 +150,10 @@ export default function GroupDetailPage() {
             Members ({group.totalMembers})
           </CardTitle>
           {group.isOwner && (
-            <InviteMembersButton groupId={group.id} groupName={group.name} />
+            <Button onClick={() => setInviteDialogOpen(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Invite Members
+            </Button>
           )}
         </CardHeader>
         <CardContent>
@@ -230,6 +234,14 @@ export default function GroupDetailPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Invite Members Dialog */}
+      <InviteMembersDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        groupId={group.id}
+        groupName={group.name}
+      />
     </div>
   );
 }
