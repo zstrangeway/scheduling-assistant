@@ -4,48 +4,17 @@ import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
-import { Button, Card, CardContent, CardHeader, CardTitle, LoadingSkeleton, ErrorState } from "@/components/ui";
-import { Users, Calendar, Mail, LucideIcon } from "lucide-react";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui";
+import { LoadingSkeleton, ErrorState } from "@/components/ui/templates";
+import { Users, Calendar, Mail } from "lucide-react";
 import { useDashboardStore } from "@/stores/dashboard.store";
-
-interface StatCardProps {
-  title: string;
-  value: number;
-  icon: LucideIcon;
-  bgColor: string;
-  iconColor: string;
-}
-
-function StatCard({
-  title,
-  value,
-  icon: Icon,
-  bgColor,
-  iconColor,
-}: StatCardProps) {
-  return (
-    <Card>
-      <CardContent className="flex items-center p-6">
-        <div className="flex-shrink-0">
-          <div
-            className={`w-8 h-8 ${bgColor} rounded-lg flex items-center justify-center`}
-          >
-            <Icon className={`w-5 h-5 ${iconColor}`} />
-          </div>
-        </div>
-        <div className="ml-5 w-0 flex-1">
-          <dl>
-            <dt className="text-sm font-medium text-muted-foreground truncate">
-              {title}
-            </dt>
-            <dd className="text-lg font-medium">{value}</dd>
-          </dl>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
+import { StatCard } from "@/components/features/dashboard";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -78,7 +47,13 @@ export default function Dashboard() {
   }
 
   if (error) {
-    return <ErrorState error={error} title="Error loading dashboard" onRetry={fetchDashboardData} />;
+    return (
+      <ErrorState
+        error={error}
+        title="Error loading dashboard"
+        onRetry={fetchDashboardData}
+      />
+    );
   }
 
   const stats = [
