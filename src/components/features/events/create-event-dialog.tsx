@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { format } from 'date-fns'
 import {
   Dialog,
   DialogContent,
@@ -9,12 +11,17 @@ import {
   DialogTitle,
   Button,
   Input,
-  Label,
   Textarea,
+  FormField,
+  Calendar,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@/components/ui'
 import { Alert, AlertDescription } from '@/components/ui'
-import { Calendar, Loader2 } from 'lucide-react'
+import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react'
 import { useEventsStore } from '@/stores/events.store'
+import { createEventSchema, type CreateEventInput } from '@/lib/validations'
 
 interface CreateEventDialogProps {
   open: boolean
@@ -27,82 +34,41 @@ export function CreateEventDialog({
   onOpenChange, 
   groupId 
 }: CreateEventDialogProps) {
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [startTime, setStartTime] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [endTime, setEndTime] = useState('')
-  const [error, setError] = useState('')
+  const { createEvent, createLoading, createError } = useEventsStore()
   
-  const { createEvent, createLoading } = useEventsStore()
-
-  // Get current date in YYYY-MM-DD format for min date
-  const today = new Date().toISOString().split('T')[0]
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-
-    if (!title.trim()) {
-      setError('Event title is required')
-      return
+  const form = useForm({
+    resolver: zodResolver(createEventSchema),
+    defaultValues: {
+      title: '',
+      description: undefined,
+      startTime: '',
+      endTime: '',
     }
+  })
 
-    if (!startDate || !startTime || !endDate || !endTime) {
-      setError('Please fill in all date and time fields')
-      return
-    }
-
-    // Combine date and time
-    const startDateTime = new Date(`${startDate}T${startTime}`)
-    const endDateTime = new Date(`${endDate}T${endTime}`)
-
-    // Validate dates
-    if (startDateTime >= endDateTime) {
-      setError('End time must be after start time')
-      return
-    }
-
-    if (startDateTime < new Date()) {
-      setError('Event cannot be scheduled in the past')
-      return
-    }
-
+  const handleSubmit = async (data: CreateEventInput) => {
     try {
-      const result = await createEvent(groupId, {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        startTime: startDateTime.toISOString(),
-        endTime: endDateTime.toISOString(),
-      })
-
+      const result = await createEvent(groupId, data)
       if (result) {
         handleClose()
       }
     } catch (error) {
       console.error('Error creating event:', error)
-      setError(error instanceof Error ? error.message : 'Failed to create event')
     }
   }
 
   const handleClose = () => {
-    setTitle('')
-    setDescription('')
-    setStartDate('')
-    setStartTime('')
-    setEndDate('')
-    setEndTime('')
-    setError('')
+    form.reset()
     onOpenChange(false)
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
-            <Calendar className="h-6 w-6 text-primary" />
+            <CalendarIcon className="h-6 w-6 text-primary" />
           </div>
           <DialogTitle>Create New Event</DialogTitle>
           <DialogDescription>
@@ -110,74 +76,151 @@ export function CreateEventDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          {createError && (
             <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{createError}</AlertDescription>
             </Alert>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="title">Event Title *</Label>
+          <FormField
+            label="Event Title"
+            required
+            htmlFor="title"
+            error={form.formState.errors.title}
+          >
             <Input
               id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              {...form.register('title')}
               placeholder="Enter event title"
               disabled={createLoading}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+          <FormField
+            label="Description"
+            htmlFor="description"
+            error={form.formState.errors.description}
+          >
             <Textarea
               id="description"
+              {...form.register('description')}
               rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter event description (optional)"
               disabled={createLoading}
             />
-          </div>
+          </FormField>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Start Date & Time</Label>
-              <div className="space-y-2">
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={today}
-                  disabled={createLoading}
-                />
-                <Input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  disabled={createLoading}
-                />
-              </div>
-            </div>
+            <FormField
+              label="Start Date & Time"
+              required
+              error={form.formState.errors.startTime}
+            >
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                    disabled={createLoading}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {form.watch('startTime') ? format(new Date(form.watch('startTime')), 'PPP p') : 'Select start date & time'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={form.watch('startTime') ? new Date(form.watch('startTime')) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        // Set to current time if no time selected yet, or preserve existing time
+                        const existingDateTime = form.getValues('startTime') ? new Date(form.getValues('startTime')) : new Date()
+                        date.setHours(existingDateTime.getHours(), existingDateTime.getMinutes())
+                        form.setValue('startTime', date.toISOString())
+                      }
+                    }}
+                    disabled={(date) => date < new Date()}
+                    autoFocus
+                  />
+                  {form.watch('startTime') && (
+                    <div className="p-3 border-t">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <Input
+                          type="time"
+                          value={new Date(form.watch('startTime')).toTimeString().slice(0, 5)}
+                          onChange={(e) => {
+                            const [hours, minutes] = e.target.value.split(':')
+                            const currentDate = new Date(form.watch('startTime'))
+                            currentDate.setHours(parseInt(hours), parseInt(minutes))
+                            form.setValue('startTime', currentDate.toISOString())
+                          }}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label>End Date & Time</Label>
-              <div className="space-y-2">
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate || today}
-                  disabled={createLoading}
-                />
-                <Input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  disabled={createLoading}
-                />
-              </div>
-            </div>
+            <FormField
+              label="End Date & Time"
+              required
+              error={form.formState.errors.endTime}
+            >
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                    disabled={createLoading}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {form.watch('endTime') ? format(new Date(form.watch('endTime')), 'PPP p') : 'Select end date & time'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={form.watch('endTime') ? new Date(form.watch('endTime')) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        // Set to 1 hour after start time, or preserve existing time
+                        const startTime = form.getValues('startTime') ? new Date(form.getValues('startTime')) : new Date()
+                        const existingEndTime = form.getValues('endTime') ? new Date(form.getValues('endTime')) : new Date(startTime.getTime() + 60 * 60 * 1000)
+                        date.setHours(existingEndTime.getHours(), existingEndTime.getMinutes())
+                        form.setValue('endTime', date.toISOString())
+                      }
+                    }}
+                    disabled={(date) => {
+                      const startDate = form.getValues('startTime') ? new Date(form.getValues('startTime')) : new Date()
+                      return date < startDate
+                    }}
+                    autoFocus
+                  />
+                  {form.watch('endTime') && (
+                    <div className="p-3 border-t">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <Input
+                          type="time"
+                          value={new Date(form.watch('endTime')).toTimeString().slice(0, 5)}
+                          onChange={(e) => {
+                            const [hours, minutes] = e.target.value.split(':')
+                            const currentDate = new Date(form.watch('endTime'))
+                            currentDate.setHours(parseInt(hours), parseInt(minutes))
+                            form.setValue('endTime', currentDate.toISOString())
+                          }}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </FormField>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
@@ -191,7 +234,7 @@ export function CreateEventDialog({
             </Button>
             <Button
               type="submit"
-              disabled={createLoading || !title.trim()}
+              disabled={createLoading || !form.formState.isValid}
             >
               {createLoading ? (
                 <>

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Dialog,
   DialogContent,
@@ -9,11 +10,13 @@ import {
   DialogTitle,
   Button,
   Input,
-  Label,
   Textarea,
+  FormField,
 } from '@/components/ui'
-import { Users, AlertCircle, Loader2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui'
+import { Users, Loader2 } from 'lucide-react'
 import { useGroupsStore } from '@/stores/groups.store'
+import { createGroupSchema, type CreateGroupInput } from '@/lib/validations'
 
 interface CreateGroupDialogProps {
   open: boolean
@@ -21,28 +24,29 @@ interface CreateGroupDialogProps {
 }
 
 export function CreateGroupDialog({ open, onOpenChange }: CreateGroupDialogProps) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
   const { createGroup, createLoading, createError } = useGroupsStore()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const form = useForm({
+    resolver: zodResolver(createGroupSchema),
+    defaultValues: {
+      name: '',
+      description: undefined,
+    }
+  })
 
+  const handleSubmit = async (data: CreateGroupInput) => {
     const result = await createGroup({
-      name: name.trim(),
-      description: description.trim() || undefined,
+      name: data.name.trim(),
+      description: data.description?.trim() || undefined,
     })
 
     if (result) {
-      setName('')
-      setDescription('')
-      onOpenChange(false)
+      handleClose()
     }
   }
 
-  const handleCancel = () => {
-    setName('')
-    setDescription('')
+  const handleClose = () => {
+    form.reset()
     onOpenChange(false)
   }
 
@@ -58,60 +62,62 @@ export function CreateGroupDialog({ open, onOpenChange }: CreateGroupDialogProps
             Create a new group to coordinate schedules with friends, family, or colleagues.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           {createError && (
-            <div className="rounded-md bg-destructive/15 p-3 border border-destructive/20">
-              <div className="flex items-center">
-                <AlertCircle className="h-4 w-4 text-destructive mr-2" />
-                <p className="text-sm text-destructive">{createError}</p>
-              </div>
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{createError}</AlertDescription>
+            </Alert>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="name">Group Name *</Label>
+          <FormField
+            label="Group Name"
+            required
+            htmlFor="name"
+            error={form.formState.errors.name}
+          >
             <Input
               id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              {...form.register('name')}
               placeholder="Enter group name"
               maxLength={100}
-              required
               disabled={createLoading}
             />
-            <p className="text-xs text-muted-foreground">
-              {name.length}/100 characters
+            <p className="text-xs text-muted-foreground mt-1">
+              {form.watch('name')?.length || 0}/100 characters
             </p>
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+          <FormField
+            label="Description"
+            htmlFor="description"
+            error={form.formState.errors.description}
+          >
             <Textarea
               id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              {...form.register('description')}
               placeholder="Optional description for your group"
               maxLength={500}
               rows={3}
               disabled={createLoading}
             />
-            <p className="text-xs text-muted-foreground">
-              {description.length}/500 characters
+            <p className="text-xs text-muted-foreground mt-1">
+              {form.watch('description')?.length || 0}/500 characters
             </p>
-          </div>
+          </FormField>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={handleCancel}
+              onClick={handleClose}
               disabled={createLoading}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={createLoading || !name.trim()}
+              disabled={createLoading || !form.formState.isValid}
             >
               {createLoading ? (
                 <>

@@ -291,4 +291,36 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Improve date and time input styling in dark mode */
+  input[type="date"], input[type="time"] {
+    /* Make calendar/clock icons more subtle in dark theme */
+    &::-webkit-calendar-picker-indicator {
+      filter: invert(0.5) opacity(0.6);
+      transition: all 0.2s ease;
+    }
+    
+    &:hover::-webkit-calendar-picker-indicator {
+      filter: invert(0.3) opacity(0.8);
+    }
+    
+    &::-webkit-datetime-edit {
+      /* Improve text color for date/time text */
+      color: inherit;
+    }
+    
+    /* Style for dark theme specifically */
+    .dark & {
+      &::-webkit-calendar-picker-indicator {
+        filter: invert(1) opacity(0.4);
+      }
+      
+      &:hover::-webkit-calendar-picker-indicator {
+        filter: invert(1) opacity(0.6);
+      }
+      
+      /* Prevent calendar popup from having wrong colors */
+      color-scheme: dark;
+    }
+  }
 }

@@ -1,114 +1,127 @@
-"use client";
+'use client'
 
-import { useState, useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
-import { useGroupDetailStore } from "@/stores/group-detail.store";
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { AlertTriangle } from 'lucide-react'
+import { useGroupDetailStore } from '@/stores/group-detail.store'
 import {
   Alert,
   AlertDescription,
   Button,
   Input,
-  Label,
   Textarea,
-} from "@/components/ui";
+  FormField,
+} from '@/components/ui'
+import { updateGroupSchema, type UpdateGroupInput } from '@/lib/validations'
 
 interface GroupSettingsFormProps {
-  groupId: string;
+  groupId: string
 }
 
 interface FormMessage {
-  type: "success" | "error";
-  text: string;
+  type: 'success' | 'error'
+  text: string
 }
 
 export function GroupSettingsForm({ groupId }: GroupSettingsFormProps) {
-  const { group, updateGroup } = useGroupDetailStore();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<FormMessage | null>(null);
+  const { group, updateGroup } = useGroupDetailStore()
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState<FormMessage | null>(null)
 
+  const form = useForm({
+    resolver: zodResolver(updateGroupSchema),
+    defaultValues: {
+      name: '',
+      description: undefined,
+    }
+  })
+
+  // Reset form when group changes
   useEffect(() => {
     if (group) {
-      setName(group.name || "");
-      setDescription(group.description || "");
+      form.reset({
+        name: group.name || '',
+        description: group.description || undefined,
+      })
     }
-  }, [group]);
+  }, [group, form])
 
-  if (!group) return null;
+  if (!group) return null
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setMessage(null);
+  const handleSubmit = async (data: UpdateGroupInput) => {
+    setIsLoading(true)
+    setMessage(null)
 
     try {
       await updateGroup(groupId, {
-        name: name.trim(),
-        description: description.trim() || undefined,
-      });
+        name: data.name.trim(),
+        description: data.description?.trim() || undefined,
+      })
 
-      setMessage({ type: "success", text: "Group updated successfully!" });
+      setMessage({ type: 'success', text: 'Group updated successfully!' })
       
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), 3000)
     } catch (error) {
       setMessage({
-        type: "error",
-        text: error instanceof Error ? error.message : "Failed to update group",
-      });
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to update group',
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
+  const watchedValues = form.watch()
   const hasChanges =
-    name.trim() !== group.name ||
-    (description.trim() || "") !== (group.description || "");
+    watchedValues.name?.trim() !== group.name ||
+    (watchedValues.description?.trim() || '') !== (group.description || '')
 
-  const isOwner = group.isOwner;
+  const isOwner = group.isOwner
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
       {message && (
-        <Alert variant={message.type === "error" ? "destructive" : "default"}>
+        <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
           <AlertDescription>{message.text}</AlertDescription>
         </Alert>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="name">
-          Group Name <span className="text-red-500">*</span>
-        </Label>
+      <FormField
+        label="Group Name"
+        required
+        htmlFor="name"
+        error={form.formState.errors.name}
+      >
         <Input
           id="name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          maxLength={100}
-          disabled={isLoading || !isOwner}
+          {...form.register('name')}
           placeholder="Enter group name"
+          disabled={isLoading || !isOwner}
+          maxLength={100}
         />
-        <p className="text-xs text-muted-foreground">
-          {name.length}/100 characters
+        <p className="text-xs text-muted-foreground mt-1">
+          {form.watch('name')?.length || 0}/100 characters
         </p>
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
+      <FormField
+        label="Description"
+        htmlFor="description"
+        error={form.formState.errors.description}
+      >
         <Textarea
           id="description"
+          {...form.register('description')}
           rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          maxLength={500}
-          disabled={isLoading || !isOwner}
           placeholder="Optional description for your group"
+          disabled={isLoading || !isOwner}
+          maxLength={500}
         />
-        <p className="text-xs text-muted-foreground">
-          {description.length}/500 characters
+        <p className="text-xs text-muted-foreground mt-1">
+          {form.watch('description')?.length || 0}/500 characters
         </p>
-      </div>
+      </FormField>
 
       {!isOwner && (
         <Alert variant="default" className="border-yellow-200 bg-yellow-50">
@@ -123,12 +136,12 @@ export function GroupSettingsForm({ groupId }: GroupSettingsFormProps) {
         <div className="flex justify-end">
           <Button
             type="submit"
-            disabled={isLoading || !hasChanges || !name.trim()}
+            disabled={isLoading || !hasChanges || !form.formState.isValid}
           >
-            {isLoading ? "Saving..." : "Save Changes"}
+            {isLoading ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       )}
     </form>
-  );
+  )
 }

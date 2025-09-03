@@ -1,7 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
+import {
+  Button,
+  Input,
+  Textarea,
+  FormField,
+  Calendar,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui'
+import { Alert, AlertDescription } from '@/components/ui'
+import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react'
+import { useEventsStore } from '@/stores/events.store'
+import { editEventSchema, type EditEventInput } from '@/lib/validations'
 
 interface EditEventFormProps {
   eventId: string
@@ -16,212 +33,213 @@ interface EditEventFormProps {
 }
 
 export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: EditEventFormProps) {
-  const [title, setTitle] = useState(initialData.title)
-  const [description, setDescription] = useState(initialData.description || '')
-  const [startDate, setStartDate] = useState('')
-  const [startTime, setStartTime] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [endTime, setEndTime] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
+  const { editEvent, editLoading, editError } = useEventsStore()
   const router = useRouter()
 
-  // Get current date in YYYY-MM-DD format for min date
-  const today = new Date().toISOString().split('T')[0]
+  const form = useForm({
+    resolver: zodResolver(editEventSchema),
+    defaultValues: {
+      title: initialData.title,
+      description: initialData.description || undefined,
+      startTime: initialData.startTime,
+      endTime: initialData.endTime,
+    }
+  })
 
+  // Reset form when initialData changes
   useEffect(() => {
-    // Parse initial dates
-    const startDateTime = new Date(initialData.startTime)
-    const endDateTime = new Date(initialData.endTime)
+    form.reset({
+      title: initialData.title,
+      description: initialData.description || undefined,
+      startTime: initialData.startTime,
+      endTime: initialData.endTime,
+    })
+  }, [initialData, form])
 
-    setStartDate(startDateTime.toISOString().split('T')[0])
-    setStartTime(startDateTime.toTimeString().slice(0, 5))
-    setEndDate(endDateTime.toISOString().split('T')[0])
-    setEndTime(endDateTime.toTimeString().slice(0, 5))
-  }, [initialData])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-
-    if (!title.trim()) {
-      setError('Event title is required')
-      return
-    }
-
-    if (!startDate || !startTime || !endDate || !endTime) {
-      setError('Please fill in all date and time fields')
-      return
-    }
-
-    // Combine date and time
-    const startDateTime = new Date(`${startDate}T${startTime}`)
-    const endDateTime = new Date(`${endDate}T${endTime}`)
-
-    // Validate dates
-    if (startDateTime >= endDateTime) {
-      setError('End time must be after start time')
-      return
-    }
-
-    setIsLoading(true)
-
+  const handleSubmit = async (data: EditEventInput) => {
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || null,
-          startTime: startDateTime.toISOString(),
-          endTime: endDateTime.toISOString(),
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update event')
-      }
-
-      if (onSuccess) {
-        onSuccess()
-      } else {
-        // Redirect back to event page
-        router.push(`/events/${eventId}`)
+      const result = await editEvent(eventId, data)
+      if (result) {
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          router.push(`/events/${eventId}`)
+        }
       }
     } catch (error) {
       console.error('Error updating event:', error)
-      setError(error instanceof Error ? error.message : 'Failed to update event')
-    } finally {
-      setIsLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-red-800">{error}</p>
-            </div>
-          </div>
-        </div>
+    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      {editError && (
+        <Alert variant="destructive">
+          <AlertDescription>{editError}</AlertDescription>
+        </Alert>
       )}
 
-      <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-          Event Title
-        </label>
-        <input
-          type="text"
+      <FormField
+        label="Event Title"
+        required
+        htmlFor="title"
+        error={form.formState.errors.title}
+      >
+        <Input
           id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          disabled={isLoading}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+          {...form.register('title')}
           placeholder="Enter event title"
+          disabled={editLoading}
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-          Description
-        </label>
-        <textarea
+      <FormField
+        label="Description"
+        htmlFor="description"
+        error={form.formState.errors.description}
+      >
+        <Textarea
           id="description"
+          {...form.register('description')}
           rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={isLoading}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
           placeholder="Enter event description (optional)"
+          disabled={editLoading}
         />
+      </FormField>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormField
+          label="Start Date & Time"
+          required
+          error={form.formState.errors.startTime}
+        >
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+                disabled={editLoading}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {form.watch('startTime') ? format(new Date(form.watch('startTime')), 'PPP p') : 'Select start date & time'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={form.watch('startTime') ? new Date(form.watch('startTime')) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    const existingDateTime = form.getValues('startTime') ? new Date(form.getValues('startTime')) : new Date()
+                    date.setHours(existingDateTime.getHours(), existingDateTime.getMinutes())
+                    form.setValue('startTime', date.toISOString())
+                  }
+                }}
+                autoFocus
+              />
+              {form.watch('startTime') && (
+                <div className="p-3 border-t">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="time"
+                      value={new Date(form.watch('startTime')).toTimeString().slice(0, 5)}
+                      onChange={(e) => {
+                        const [hours, minutes] = e.target.value.split(':')
+                        const currentDate = new Date(form.watch('startTime'))
+                        currentDate.setHours(parseInt(hours), parseInt(minutes))
+                        form.setValue('startTime', currentDate.toISOString())
+                      }}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        </FormField>
+
+        <FormField
+          label="End Date & Time"
+          required
+          error={form.formState.errors.endTime}
+        >
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+                disabled={editLoading}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {form.watch('endTime') ? format(new Date(form.watch('endTime')), 'PPP p') : 'Select end date & time'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={form.watch('endTime') ? new Date(form.watch('endTime')) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    const startTime = form.getValues('startTime') ? new Date(form.getValues('startTime')) : new Date()
+                    const existingEndTime = form.getValues('endTime') ? new Date(form.getValues('endTime')) : new Date(startTime.getTime() + 60 * 60 * 1000)
+                    date.setHours(existingEndTime.getHours(), existingEndTime.getMinutes())
+                    form.setValue('endTime', date.toISOString())
+                  }
+                }}
+                disabled={(date) => {
+                  const startDate = form.getValues('startTime') ? new Date(form.getValues('startTime')) : new Date()
+                  return date < startDate
+                }}
+                autoFocus
+              />
+              {form.watch('endTime') && (
+                <div className="p-3 border-t">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="time"
+                      value={new Date(form.watch('endTime')).toTimeString().slice(0, 5)}
+                      onChange={(e) => {
+                        const [hours, minutes] = e.target.value.split(':')
+                        const currentDate = new Date(form.watch('endTime'))
+                        currentDate.setHours(parseInt(hours), parseInt(minutes))
+                        form.setValue('endTime', currentDate.toISOString())
+                      }}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        </FormField>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            Start Date & Time
-          </label>
-          <div className="space-y-2">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              disabled={isLoading}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-            />
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              disabled={isLoading}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            End Date & Time
-          </label>
-          <div className="space-y-2">
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              min={startDate || today}
-              disabled={isLoading}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-            />
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              disabled={isLoading}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end space-x-3">
+      <div className="flex justify-end space-x-2 pt-4">
         {onCancel && (
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={onCancel}
-            disabled={isLoading}
-            className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={editLoading}
           >
             Cancel
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="submit"
-          disabled={isLoading}
-          className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={editLoading || !form.formState.isValid}
         >
-          {isLoading ? (
+          {editLoading ? (
             <>
-              <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Updating Event...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Updating...
             </>
           ) : (
             'Update Event'
           )}
-        </button>
+        </Button>
       </div>
     </form>
   )

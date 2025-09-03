@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Dialog,
   DialogContent,
@@ -10,10 +12,12 @@ import {
   Button,
   Input,
   Label,
+  FormField,
 } from '@/components/ui'
 import { Alert, AlertDescription } from '@/components/ui'
 import { Mail, Plus, Trash2, Loader2, CheckCircle } from 'lucide-react'
 import { useGroupDetailStore } from '@/stores/group-detail.store'
+import { inviteMembersSchema, type InviteMembersInput } from '@/lib/validations'
 
 interface InviteMembersDialogProps {
   open: boolean
@@ -28,95 +32,48 @@ export function InviteMembersDialog({
   groupId, 
   groupName 
 }: InviteMembersDialogProps) {
-  const [emails, setEmails] = useState([''])
-  const [errors, setErrors] = useState<string[]>([])
   const [successCount, setSuccessCount] = useState(0)
   const { inviteMembers, inviteLoading, inviteError } = useGroupDetailStore()
 
+  const form = useForm<InviteMembersInput>({
+    resolver: zodResolver(inviteMembersSchema),
+    defaultValues: {
+      emails: [''] as string[],
+    }
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'emails'
+  })
+
   const addEmailField = () => {
-    setEmails([...emails, ''])
+    append('')
   }
 
   const removeEmailField = (index: number) => {
-    if (emails.length > 1) {
-      setEmails(emails.filter((_, i) => i !== index))
-      setErrors(errors.filter((_, i) => i !== index))
+    if (fields.length > 1) {
+      remove(index)
     }
   }
 
-  const updateEmail = (index: number, value: string) => {
-    const newEmails = [...emails]
-    newEmails[index] = value
-    setEmails(newEmails)
-    
-    // Clear error for this field when user starts typing
-    if (errors[index]) {
-      const newErrors = [...errors]
-      newErrors[index] = ''
-      setErrors(newErrors)
-    }
-  }
-
-  const validateEmails = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    const newErrors: string[] = []
-    const validEmails: string[] = []
-
-    emails.forEach((email, index) => {
-      const trimmedEmail = email.trim()
-      if (!trimmedEmail) {
-        newErrors[index] = 'Email is required'
-      } else if (!emailRegex.test(trimmedEmail)) {
-        newErrors[index] = 'Please enter a valid email address'
-      } else {
-        newErrors[index] = ''
-        if (!validEmails.includes(trimmedEmail.toLowerCase())) {
-          validEmails.push(trimmedEmail.toLowerCase())
-        }
-      }
-    })
-
-    // Check for duplicates
-    const emailCounts = new Map()
-    emails.forEach((email, index) => {
-      const trimmedEmail = email.trim().toLowerCase()
-      if (trimmedEmail && emailRegex.test(trimmedEmail)) {
-        if (emailCounts.has(trimmedEmail)) {
-          newErrors[index] = 'Duplicate email address'
-          newErrors[emailCounts.get(trimmedEmail)] = 'Duplicate email address'
-        }
-        emailCounts.set(trimmedEmail, index)
-      }
-    })
-
-    setErrors(newErrors)
-    return validEmails
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    const validEmails = validateEmails()
-    
-    if (validEmails.length === 0) {
-      return
-    }
-
+  const handleSubmit = async (data: InviteMembersInput) => {
     setSuccessCount(0)
 
     try {
-      const result = await inviteMembers(groupId, validEmails)
+      const result = await inviteMembers(groupId, data.emails)
       setSuccessCount(result.successful)
 
-      // Update errors with any failures
-      const newErrors = [...errors]
+      // Update form errors with any failures
       result.errors.forEach(({ email, error }) => {
-        const originalIndex = emails.findIndex(e => e.trim().toLowerCase() === email.toLowerCase())
-        if (originalIndex !== -1) {
-          newErrors[originalIndex] = error
+        const fieldIndex = data.emails.findIndex(e => e.toLowerCase() === email.toLowerCase())
+        if (fieldIndex !== -1) {
+          form.setError(`emails.${fieldIndex}`, {
+            type: 'manual',
+            message: error
+          })
         }
       })
-      setErrors(newErrors)
 
       if (result.successful > 0) {
         // Close dialog after successful invitations
@@ -130,14 +87,13 @@ export function InviteMembersDialog({
   }
 
   const handleClose = () => {
-    setEmails([''])
-    setErrors([])
+    form.reset({ emails: [''] })
     setSuccessCount(0)
     onOpenChange(false)
   }
 
-  const hasValidEmails = emails.some(email => email.trim())
-  const hasErrors = errors.some(error => error)
+  const watchedEmails = form.watch('emails')
+  const validEmailCount = watchedEmails.filter(email => email?.trim()).length
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -155,7 +111,7 @@ export function InviteMembersDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           {successCount > 0 && (
             <Alert>
               <CheckCircle className="h-4 w-4" />
@@ -165,33 +121,39 @@ export function InviteMembersDialog({
             </Alert>
           )}
 
+          {inviteError && (
+            <Alert variant="destructive">
+              <AlertDescription>{inviteError}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-2">
             <Label>Email Addresses</Label>
             <div className="space-y-3">
-              {emails.map((email, index) => (
-                <div key={index} className="flex items-start space-x-2">
-                  <div className="flex-1">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex items-start space-x-2">
+                  <FormField
+                    htmlFor={`emails.${index}`}
+                    error={form.formState.errors.emails?.[index]}
+                    className="flex-1"
+                  >
                     <Input
+                      id={`emails.${index}`}
                       type="email"
-                      value={email}
-                      onChange={(e) => updateEmail(index, e.target.value)}
+                      {...form.register(`emails.${index}`)}
                       placeholder="Enter email address"
                       disabled={inviteLoading}
-                      className={errors[index] ? 'border-destructive' : ''}
                     />
-                    {errors[index] && (
-                      <p className="mt-1 text-xs text-destructive">{errors[index]}</p>
-                    )}
-                  </div>
+                  </FormField>
                   
-                  {emails.length > 1 && (
+                  {fields.length > 1 && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => removeEmailField(index)}
                       disabled={inviteLoading}
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive mt-0"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -205,7 +167,7 @@ export function InviteMembersDialog({
               variant="outline"
               size="sm"
               onClick={addEmailField}
-              disabled={inviteLoading || emails.length >= 10}
+              disabled={inviteLoading || fields.length >= 10}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Another Email
@@ -223,7 +185,7 @@ export function InviteMembersDialog({
             </Button>
             <Button
               type="submit"
-              disabled={inviteLoading || !hasValidEmails || hasErrors}
+              disabled={inviteLoading || !form.formState.isValid || validEmailCount === 0}
             >
               {inviteLoading ? (
                 <>
@@ -231,7 +193,7 @@ export function InviteMembersDialog({
                   Sending...
                 </>
               ) : (
-                `Send ${emails.filter(e => e.trim()).length} Invitation${emails.filter(e => e.trim()).length !== 1 ? 's' : ''}`
+                `Send ${validEmailCount} Invitation${validEmailCount !== 1 ? 's' : ''}`
               )}
             </Button>
           </div>
