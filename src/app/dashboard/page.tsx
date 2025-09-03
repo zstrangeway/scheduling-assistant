@@ -9,19 +9,27 @@ import { Users, Calendar, Mail, LucideIcon, AlertCircle } from "lucide-react";
 import { useDashboardStore } from "@/stores/dashboard.store";
 
 interface StatCardProps {
-  title: string
-  value: number
-  icon: LucideIcon
-  bgColor: string
-  iconColor: string
+  title: string;
+  value: number;
+  icon: LucideIcon;
+  bgColor: string;
+  iconColor: string;
 }
 
-function StatCard({ title, value, icon: Icon, bgColor, iconColor }: StatCardProps) {
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  bgColor,
+  iconColor,
+}: StatCardProps) {
   return (
     <Card>
       <CardContent className="flex items-center p-6">
         <div className="flex-shrink-0">
-          <div className={`w-8 h-8 ${bgColor} rounded-lg flex items-center justify-center`}>
+          <div
+            className={`w-8 h-8 ${bgColor} rounded-lg flex items-center justify-center`}
+          >
             <Icon className={`w-5 h-5 ${iconColor}`} />
           </div>
         </div>
@@ -35,7 +43,7 @@ function StatCard({ title, value, icon: Icon, bgColor, iconColor }: StatCardProp
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function LoadingSkeleton() {
@@ -61,10 +69,16 @@ function LoadingSkeleton() {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
-function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
+function ErrorState({
+  error,
+  onRetry,
+}: {
+  error: string;
+  onRetry: () => void;
+}) {
   return (
     <div className="space-y-6">
       <Card>
@@ -76,7 +90,7 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 export default function Dashboard() {
@@ -106,15 +120,11 @@ export default function Dashboard() {
   }, []);
 
   if (status === "loading" || loading) {
-    return <LoadingSkeleton />
+    return <LoadingSkeleton />;
   }
 
   if (error) {
-    return <ErrorState error={error} onRetry={fetchDashboardData} />
-  }
-
-  if (!session) {
-    return null
+    return <ErrorState error={error} onRetry={fetchDashboardData} />;
   }
 
   const stats = [
@@ -123,30 +133,30 @@ export default function Dashboard() {
       value: dashboardData?.totalGroups || 0,
       icon: Users,
       bgColor: "bg-primary",
-      iconColor: "text-primary-foreground"
+      iconColor: "text-primary-foreground",
     },
     {
-      title: "Upcoming Events", 
+      title: "Upcoming Events",
       value: dashboardData?.upcomingEvents || 0,
       icon: Calendar,
       bgColor: "bg-secondary",
-      iconColor: "text-secondary-foreground"
+      iconColor: "text-secondary-foreground",
     },
     {
       title: "Pending Invites",
-      value: dashboardData?.pendingInvites || 0, 
+      value: dashboardData?.pendingInvites || 0,
       icon: Mail,
       bgColor: "bg-accent",
-      iconColor: "text-accent-foreground"
-    }
-  ]
+      iconColor: "text-accent-foreground",
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <div className="md:flex md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
           <h2 className="text-2xl font-bold leading-7 sm:truncate sm:text-3xl">
-            Welcome back, {session.user?.name}!
+            Welcome back, {session?.user?.name}!
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage your groups and coordinate schedules
@@ -182,5 +192,5 @@ export default function Dashboard() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
