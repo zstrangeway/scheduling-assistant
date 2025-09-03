@@ -5,8 +5,79 @@ import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components";
-import { Users, Calendar, Mail } from "lucide-react";
+import { Users, Calendar, Mail, LucideIcon, AlertCircle } from "lucide-react";
 import { useDashboardStore } from "@/stores/dashboard.store";
+
+interface StatCardProps {
+  title: string
+  value: number
+  icon: LucideIcon
+  bgColor: string
+  iconColor: string
+}
+
+function StatCard({ title, value, icon: Icon, bgColor, iconColor }: StatCardProps) {
+  return (
+    <Card>
+      <CardContent className="flex items-center p-6">
+        <div className="flex-shrink-0">
+          <div className={`w-8 h-8 ${bgColor} rounded-lg flex items-center justify-center`}>
+            <Icon className={`w-5 h-5 ${iconColor}`} />
+          </div>
+        </div>
+        <div className="ml-5 w-0 flex-1">
+          <dl>
+            <dt className="text-sm font-medium text-muted-foreground truncate">
+              {title}
+            </dt>
+            <dd className="text-lg font-medium">{value}</dd>
+          </dl>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="animate-pulse">
+        <div className="h-8 bg-muted rounded w-1/3 mb-2"></div>
+        <div className="h-4 bg-muted rounded w-1/2"></div>
+      </div>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="p-6">
+              <div className="animate-pulse flex items-center">
+                <div className="w-8 h-8 bg-muted rounded-lg"></div>
+                <div className="ml-5 flex-1">
+                  <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
+                  <div className="h-6 bg-muted rounded w-1/3"></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="p-6 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
+          <h3 className="text-lg font-medium mb-2">Error loading dashboard</h3>
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
+          <Button onClick={onRetry}>Try Again</Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -23,7 +94,6 @@ export default function Dashboard() {
 
     if (!session) {
       redirect("/signin");
-      return;
     }
 
     fetchDashboardData();
@@ -36,34 +106,40 @@ export default function Dashboard() {
   }, []);
 
   if (status === "loading" || loading) {
-    return (
-      <div className="space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-muted rounded w-1/3 mb-2"></div>
-          <div className="h-4 bg-muted rounded w-1/2"></div>
-        </div>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="animate-pulse flex items-center">
-                  <div className="w-8 h-8 bg-muted rounded-lg"></div>
-                  <div className="ml-5 flex-1">
-                    <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
-                    <div className="h-6 bg-muted rounded w-1/3"></div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+    return <LoadingSkeleton />
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={fetchDashboardData} />
   }
 
   if (!session) {
-    return null;
+    return null
   }
+
+  const stats = [
+    {
+      title: "Groups",
+      value: dashboardData?.totalGroups || 0,
+      icon: Users,
+      bgColor: "bg-primary",
+      iconColor: "text-primary-foreground"
+    },
+    {
+      title: "Upcoming Events", 
+      value: dashboardData?.upcomingEvents || 0,
+      icon: Calendar,
+      bgColor: "bg-secondary",
+      iconColor: "text-secondary-foreground"
+    },
+    {
+      title: "Pending Invites",
+      value: dashboardData?.pendingInvites || 0, 
+      icon: Mail,
+      bgColor: "bg-accent",
+      iconColor: "text-accent-foreground"
+    }
+  ]
 
   return (
     <div className="space-y-6">
@@ -79,65 +155,9 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-primary-foreground" />
-              </div>
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-muted-foreground truncate">
-                  Groups
-                </dt>
-                <dd className="text-lg font-medium">
-                  {dashboardData?.totalGroups || 0}
-                </dd>
-              </dl>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-secondary-foreground" />
-              </div>
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-muted-foreground truncate">
-                  Upcoming Events
-                </dt>
-                <dd className="text-lg font-medium">
-                  {dashboardData?.upcomingEvents || 0}
-                </dd>
-              </dl>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-                <Mail className="w-5 h-5 text-accent-foreground" />
-              </div>
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-muted-foreground truncate">
-                  Pending Invites
-                </dt>
-                <dd className="text-lg font-medium">
-                  {dashboardData?.pendingInvites || 0}
-                </dd>
-              </dl>
-            </div>
-          </CardContent>
-        </Card>
+        {stats.map((stat) => (
+          <StatCard key={stat.title} {...stat} />
+        ))}
       </div>
 
       <Card>
@@ -162,5 +182,5 @@ export default function Dashboard() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
