@@ -1,5 +1,4 @@
 // Groups feature components
-export { CreateEventButton } from './create-event-button'
 export { CreateGroupDialog } from './create-group-dialog'
 export { GroupActions } from './group-actions'
 export { GroupCard } from './group-card'

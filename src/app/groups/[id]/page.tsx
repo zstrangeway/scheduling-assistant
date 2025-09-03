@@ -6,13 +6,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Users, Calendar, ArrowLeft, Mail, Plus } from "lucide-react";
 import { useGroupDetailStore } from "@/stores/group-detail.store";
-import { EventList } from "@/components/features/events";
+import { EventList, CreateEventDialog } from "@/components/features/events";
 import {
   MemberCard,
   InviteCard,
   GroupActions,
   InviteMembersDialog,
-  CreateEventButton,
 } from "@/components/features/groups";
 import {
   Badge,
@@ -45,6 +44,7 @@ export default function GroupDetailPage() {
   const groupId = params.id as string;
   const { group, loading, error, fetchGroup, reset } = useGroupDetailStore();
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [createEventDialogOpen, setCreateEventDialogOpen] = useState(false);
 
   useEffect(() => {
     if (groupId) {
@@ -223,7 +223,10 @@ export default function GroupDetailPage() {
             Events ({group._count.events})
           </CardTitle>
           {(group.isOwner || group.isMember) && (
-            <CreateEventButton groupId={group.id} />
+            <Button onClick={() => setCreateEventDialogOpen(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Event
+            </Button>
           )}
         </CardHeader>
         <CardContent>
@@ -241,6 +244,13 @@ export default function GroupDetailPage() {
         onOpenChange={setInviteDialogOpen}
         groupId={group.id}
         groupName={group.name}
+      />
+
+      {/* Create Event Dialog */}
+      <CreateEventDialog
+        open={createEventDialogOpen}
+        onOpenChange={setCreateEventDialogOpen}
+        groupId={group.id}
       />
     </div>
   );
