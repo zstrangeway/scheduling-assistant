@@ -1,7 +1,6 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import {
@@ -27,14 +26,8 @@ export default function Dashboard() {
   } = useDashboardStore();
 
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (!session) {
-      redirect("/signin");
-    }
-
     fetchDashboardData();
-  }, [session, status, fetchDashboardData]);
+  }, [fetchDashboardData]);
 
   useEffect(() => {
     return () => {

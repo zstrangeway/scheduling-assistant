@@ -1,7 +1,6 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useGroupsStore } from "@/stores/groups.store";
@@ -19,14 +18,8 @@ export default function GroupsPage() {
   const { groups, loading, error, fetchGroups, reset } = useGroupsStore();
 
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (!session) {
-      redirect("/signin");
-    }
-
     fetchGroups();
-  }, [session, status, fetchGroups]);
+  }, [fetchGroups]);
 
   useEffect(() => {
     return () => {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -47,16 +46,10 @@ export default function GroupDetailPage() {
   const { group, loading, error, fetchGroup, reset } = useGroupDetailStore();
 
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (!session) {
-      redirect("/signin");
-    }
-
     if (groupId) {
       fetchGroup(groupId);
     }
-  }, [session, status, groupId, fetchGroup]);
+  }, [groupId, fetchGroup]);
 
   useEffect(() => {
     return () => {
