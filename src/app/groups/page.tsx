@@ -4,8 +4,8 @@ import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Card, CardContent, CreateGroupDialog } from "@/components";
-import { Users, Calendar, Plus, AlertCircle } from "lucide-react";
+import { Button, Card, CardContent, CreateGroupDialog, LoadingSkeleton, ErrorState } from "@/components";
+import { Users, Calendar, Plus } from "lucide-react";
 import { useGroupsStore } from "@/stores/groups.store";
 
 interface Group {
@@ -75,46 +75,6 @@ function GroupCard({ group, isOwner }: GroupCardProps) {
   )
 }
 
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="animate-pulse">
-        <div className="h-8 bg-muted rounded w-1/3 mb-2"></div>
-        <div className="h-4 bg-muted rounded w-1/2"></div>
-      </div>
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="animate-pulse flex items-center">
-                <div className="w-8 h-8 bg-muted rounded-lg"></div>
-                <div className="ml-5 flex-1">
-                  <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
-                  <div className="h-6 bg-muted rounded w-1/3"></div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardContent className="p-6 text-center">
-          <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
-          <h3 className="text-lg font-medium mb-2">Error loading groups</h3>
-          <p className="text-sm text-muted-foreground mb-4">{error}</p>
-          <Button onClick={onRetry}>Try Again</Button>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
 
 function EmptyState({ onCreateGroup }: { onCreateGroup: () => void }) {
   return (
@@ -190,11 +150,11 @@ export default function GroupsPage() {
   }, []);
 
   if (status === "loading" || loading) {
-    return <LoadingSkeleton />
+    return <LoadingSkeleton variant="cards" count={3} />
   }
 
   if (error) {
-    return <ErrorState error={error} onRetry={fetchGroups} />
+    return <ErrorState error={error} title="Error loading groups" onRetry={fetchGroups} />
   }
 
   const ownedGroups = groups.filter(group => group.owner.id === session?.user?.id)

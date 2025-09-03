@@ -77,17 +77,49 @@ export async function GET(request: Request, { params }: RouteParams) {
           }
         },
         events: {
-          select: {
-            id: true,
-            title: true,
-            startTime: true,
-            endTime: true,
-            createdAt: true,
+          include: {
+            creator: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              }
+            },
+            responses: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    image: true,
+                  }
+                }
+              }
+            }
           },
           orderBy: {
             startTime: 'asc'
+          }
+        },
+        invites: {
+          select: {
+            id: true,
+            email: true,
+            status: true,
+            createdAt: true,
+            expiresAt: true,
+            sender: {
+              select: {
+                name: true,
+                email: true,
+              }
+            }
           },
-          take: 5
+          orderBy: {
+            createdAt: 'desc'
+          }
         },
         _count: {
           select: {
@@ -106,7 +138,27 @@ export async function GET(request: Request, { params }: RouteParams) {
       )
     }
 
-    return NextResponse.json(group)
+    // Transform the data to include computed fields
+    const transformedGroup = {
+      ...group,
+      isOwner: group.owner.id === session.user.id,
+      isMember: group.members.some(m => m.user.id === session.user.id),
+      totalMembers: group._count.members + 1, // Owner + members
+      currentUserMembership: group.members.find(m => m.user.id === session.user.id),
+      events: group.events.map(event => ({
+        ...event,
+        startTime: event.startTime.toISOString(),
+        endTime: event.endTime.toISOString(),
+        responseCount: {
+          available: event.responses.filter(r => r.status === 'AVAILABLE').length,
+          unavailable: event.responses.filter(r => r.status === 'UNAVAILABLE').length,
+          maybe: event.responses.filter(r => r.status === 'MAYBE').length,
+          total: event.responses.length
+        }
+      }))
+    }
+
+    return NextResponse.json(transformedGroup)
   } catch (error) {
     console.error('Error fetching group:', error)
     return NextResponse.json(

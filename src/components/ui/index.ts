@@ -32,4 +32,7 @@ export {
 } from './dropdown-menu'
 export { Input } from './input'
 export { Label } from './label'
+export { LoadingSkeleton } from './loading-skeleton'
+export { ErrorState } from './error-state'
+export { Separator } from './separator'
 export { Textarea } from './textarea'
