@@ -28,7 +28,83 @@ function validateUpdateGroupData(data: Record<string, unknown>) {
 
 type Params = Promise<{ id: string }>
 
-export async function GET(req: NextRequest, ctx:  {params: Params}) {
+type GroupMember = {
+  id: string
+  userId: string
+  groupId: string
+  role: string
+  joinedAt: Date
+  user: {
+    id: string
+    name: string | null
+    email: string
+    image: string | null
+  }
+}
+
+type GroupWithRelations = {
+  id: string
+  name: string
+  description: string | null
+  ownerId: string
+  createdAt: Date
+  updatedAt: Date
+  owner: {
+    id: string
+    name: string | null
+    email: string
+    image: string | null
+  }
+  members: GroupMember[]
+  events: Array<{
+    id: string
+    title: string
+    description: string | null
+    startTime: Date
+    endTime: Date
+    groupId: string
+    creatorId: string
+    createdAt: Date
+    updatedAt: Date
+    creator: {
+      id: string
+      name: string | null
+      email: string
+      image: string | null
+    }
+    responses: Array<{
+      id: string
+      status: 'AVAILABLE' | 'UNAVAILABLE' | 'MAYBE'
+      comment: string | null
+      eventId: string
+      userId: string
+      createdAt: Date
+      updatedAt: Date
+      user: {
+        id: string
+        name: string | null
+        email: string
+        image: string | null
+      }
+    }>
+  }>
+  invites: Array<{
+    id: string
+    email: string
+    status: string
+    createdAt: Date
+    expiresAt: Date
+    sender: {
+      name: string | null
+      email: string
+    }
+  }>
+  _count: {
+    members: number
+  }
+}
+
+export async function GET(_req: NextRequest, ctx:  {params: Params}) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
@@ -139,17 +215,17 @@ export async function GET(req: NextRequest, ctx:  {params: Params}) {
     const transformedGroup = {
       ...group,
       isOwner: group.owner.id === session.user.id,
-      isMember: group.members.some(m => m.user.id === session.user.id),
+      isMember: group.members.some((m: GroupMember) => m.user.id === session.user.id),
       totalMembers: group._count.members + 1, // Owner + members
-      currentUserMembership: group.members.find(m => m.user.id === session.user.id),
-      events: group.events.map(event => ({
+      currentUserMembership: group.members.find((m: GroupMember) => m.user.id === session.user.id),
+      events: group.events.map((event: GroupWithRelations['events'][0]) => ({
         ...event,
         startTime: event.startTime.toISOString(),
         endTime: event.endTime.toISOString(),
         responseCount: {
-          available: event.responses.filter(r => r.status === 'AVAILABLE').length,
-          unavailable: event.responses.filter(r => r.status === 'UNAVAILABLE').length,
-          maybe: event.responses.filter(r => r.status === 'MAYBE').length,
+          available: event.responses.filter((r) => r.status === 'AVAILABLE').length,
+          unavailable: event.responses.filter((r) => r.status === 'UNAVAILABLE').length,
+          maybe: event.responses.filter((r) => r.status === 'MAYBE').length,
           total: event.responses.length
         }
       }))
