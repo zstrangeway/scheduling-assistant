@@ -13,7 +13,7 @@ export async function sendEmail({
   to, 
   subject, 
   html, 
-  from = 'Availability Helper <noreply@availabilityhelper.com>' 
+  from = 'Availability Helper <onboarding@resend.dev>' 
 }: SendEmailOptions) {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY environment variable is not set')
