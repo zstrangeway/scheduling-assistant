@@ -5,8 +5,41 @@ import { db } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
+type EventWithRelations = {
+  id: string
+  title: string
+  description: string | null
+  startTime: Date
+  endTime: Date
+  groupId: string
+  creatorId: string
+  createdAt: Date
+  updatedAt: Date
+  creator: {
+    id: string
+    name: string | null
+    email: string
+    image: string | null
+  }
+  responses: Array<{
+    id: string
+    status: 'AVAILABLE' | 'UNAVAILABLE' | 'MAYBE'
+    comment: string | null
+    eventId: string
+    userId: string
+    createdAt: Date
+    updatedAt: Date
+    user: {
+      id: string
+      name: string | null
+      email: string
+      image: string | null
+    }
+  }>
+}
+
 // Get all responses for an event
-export async function GET(req: NextRequest, ctx: { params: Params }) {
+export async function GET(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
@@ -67,12 +100,12 @@ export async function GET(req: NextRequest, ctx: { params: Params }) {
     })
 
     return NextResponse.json({
-      events: events.map(event => ({
+      events: events.map((event: EventWithRelations) => ({
         ...event,
         responseCount: {
-          available: event.responses.filter(r => r.status === 'AVAILABLE').length,
-          unavailable: event.responses.filter(r => r.status === 'UNAVAILABLE').length,
-          maybe: event.responses.filter(r => r.status === 'MAYBE').length,
+          available: event.responses.filter((r) => r.status === 'AVAILABLE').length,
+          unavailable: event.responses.filter((r) => r.status === 'UNAVAILABLE').length,
+          maybe: event.responses.filter((r) => r.status === 'MAYBE').length,
           total: event.responses.length
         }
       }))
