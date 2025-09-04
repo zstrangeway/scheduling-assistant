@@ -20,7 +20,7 @@ import {
 } from '@/components/ui'
 import { Alert, AlertDescription } from '@/components/ui'
 import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react'
-import { useEventsStore } from '@/stores/events.store'
+import { useGroupDetailStore } from '@/stores/group-detail.store'
 import { createEventSchema, type CreateEventInput } from '@/lib/validations'
 
 interface CreateEventDialogProps {
@@ -36,7 +36,7 @@ export function CreateEventDialog({
   groupId,
   onEventCreated
 }: CreateEventDialogProps) {
-  const { createEvent, createLoading, createError } = useEventsStore()
+  const { createEvent, eventLoading, eventError } = useGroupDetailStore()
   
   const form = useForm({
     resolver: zodResolver(createEventSchema),
@@ -86,9 +86,9 @@ export function CreateEventDialog({
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          {createError && (
+          {eventError && (
             <Alert variant="destructive">
-              <AlertDescription>{createError}</AlertDescription>
+              <AlertDescription>{eventError}</AlertDescription>
             </Alert>
           )}
 
@@ -102,7 +102,7 @@ export function CreateEventDialog({
               id="title"
               {...form.register('title')}
               placeholder="Enter event title"
-              disabled={createLoading}
+              disabled={eventLoading}
             />
           </FormField>
 
@@ -116,7 +116,7 @@ export function CreateEventDialog({
               {...form.register('description')}
               rows={3}
               placeholder="Enter event description (optional)"
-              disabled={createLoading}
+              disabled={eventLoading}
             />
           </FormField>
 
@@ -131,7 +131,7 @@ export function CreateEventDialog({
                   <Button
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
-                    disabled={createLoading}
+                    disabled={eventLoading}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {form.watch('startTime') ? format(new Date(form.watch('startTime')), 'PPP p') : 'Select start date & time'}
@@ -184,7 +184,7 @@ export function CreateEventDialog({
                   <Button
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
-                    disabled={createLoading}
+                    disabled={eventLoading}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {form.watch('endTime') ? format(new Date(form.watch('endTime')), 'PPP p') : 'Select end date & time'}
@@ -237,15 +237,15 @@ export function CreateEventDialog({
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={createLoading}
+              disabled={eventLoading}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={createLoading}
+              disabled={eventLoading}
             >
-              {createLoading ? (
+              {eventLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...

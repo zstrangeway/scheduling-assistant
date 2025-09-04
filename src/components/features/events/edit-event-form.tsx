@@ -16,7 +16,7 @@ import {
 } from '@/components/ui'
 import { Alert, AlertDescription } from '@/components/ui'
 import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react'
-import { useEventsStore } from '@/stores/events.store'
+import { useGroupDetailStore } from '@/stores/group-detail.store'
 import { editEventSchema, type EditEventInput } from '@/lib/validations'
 
 interface EditEventFormProps {
@@ -32,7 +32,7 @@ interface EditEventFormProps {
 }
 
 export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: EditEventFormProps) {
-  const { editEvent, editLoading, editError } = useEventsStore()
+  const { updateEvent, eventLoading, eventError } = useGroupDetailStore()
 
   const form = useForm({
     resolver: zodResolver(editEventSchema),
@@ -56,8 +56,8 @@ export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: Edi
 
   const handleSubmit = async (data: EditEventInput) => {
     try {
-      const result = await editEvent(eventId, data)
-      if (result && onSuccess) {
+      await updateEvent(eventId, data)
+      if (onSuccess) {
         onSuccess()
       }
     } catch (error) {
@@ -67,9 +67,9 @@ export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: Edi
 
   return (
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-      {editError && (
+      {eventError && (
         <Alert variant="destructive">
-          <AlertDescription>{editError}</AlertDescription>
+          <AlertDescription>{eventError}</AlertDescription>
         </Alert>
       )}
 
@@ -83,7 +83,7 @@ export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: Edi
           id="title"
           {...form.register('title')}
           placeholder="Enter event title"
-          disabled={editLoading}
+          disabled={eventLoading}
         />
       </FormField>
 
@@ -97,7 +97,7 @@ export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: Edi
           {...form.register('description')}
           rows={3}
           placeholder="Enter event description (optional)"
-          disabled={editLoading}
+          disabled={eventLoading}
         />
       </FormField>
 
@@ -112,7 +112,7 @@ export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: Edi
               <Button
                 variant="outline"
                 className="w-full justify-start text-left font-normal"
-                disabled={editLoading}
+                disabled={eventLoading}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {form.watch('startTime') ? format(new Date(form.watch('startTime')), 'PPP p') : 'Select start date & time'}
@@ -163,7 +163,7 @@ export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: Edi
               <Button
                 variant="outline"
                 className="w-full justify-start text-left font-normal"
-                disabled={editLoading}
+                disabled={eventLoading}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {form.watch('endTime') ? format(new Date(form.watch('endTime')), 'PPP p') : 'Select end date & time'}
@@ -216,16 +216,16 @@ export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: Edi
             type="button"
             variant="outline"
             onClick={onCancel}
-            disabled={editLoading}
+            disabled={eventLoading}
           >
             Cancel
           </Button>
         )}
         <Button
           type="submit"
-          disabled={editLoading || !form.formState.isValid}
+          disabled={eventLoading}
         >
-          {editLoading ? (
+          {eventLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Updating...

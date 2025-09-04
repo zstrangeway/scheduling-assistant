@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Edit, MoreVertical, Trash2, Calendar, User, Check, X, AlertCircle } from 'lucide-react'
 import { useUser } from '@/contexts/user-context'
-import { useEventsStore } from '@/stores/events.store'
+import { useGroupDetailStore } from '@/stores/group-detail.store'
 import { EditEventDialog } from './edit-event-dialog'
 import {
   Card,
@@ -53,7 +53,7 @@ interface EventCardProps {
 
 export function EventCard({ event, groupOwnerId, onEventDeleted, onEventUpdated }: EventCardProps) {
   const { profile } = useUser()
-  const { respondToEvent } = useEventsStore()
+  const { respondToEvent, deleteEvent } = useGroupDetailStore()
   const [deletingEvent, setDeletingEvent] = useState(false)
   const [respondingTo, setRespondingTo] = useState<string | null>(null)
   
@@ -130,15 +130,7 @@ export function EventCard({ event, groupOwnerId, onEventDeleted, onEventUpdated 
     setDeletingEvent(true)
 
     try {
-      const response = await fetch(`/api/events/${event.id}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to delete event')
-      }
-
+      await deleteEvent(event.id)
       if (onEventDeleted) {
         onEventDeleted()
       }

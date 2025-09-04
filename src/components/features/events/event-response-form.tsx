@@ -12,7 +12,7 @@ import {
 } from '@/components/ui'
 import { Alert, AlertDescription } from '@/components/ui'
 import { Loader2 } from 'lucide-react'
-import { useEventsStore } from '@/stores/events.store'
+import { useGroupDetailStore } from '@/stores/group-detail.store'
 import { eventResponseSchema, type EventResponseInput } from '@/lib/validations'
 
 interface EventResponseFormProps {
@@ -26,7 +26,7 @@ interface EventResponseFormProps {
 }
 
 export function EventResponseForm({ eventId, currentResponse, onSuccess, onCancel }: EventResponseFormProps) {
-  const { respondToEvent, responseLoading, responseError } = useEventsStore()
+  const { respondToEvent, eventLoading, eventError } = useGroupDetailStore()
   const router = useRouter()
 
   const form = useForm({
@@ -86,9 +86,9 @@ export function EventResponseForm({ eventId, currentResponse, onSuccess, onCance
 
   return (
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-      {responseError && (
+      {eventError && (
         <Alert variant="destructive">
-          <AlertDescription>{responseError}</AlertDescription>
+          <AlertDescription>{eventError}</AlertDescription>
         </Alert>
       )}
 
@@ -106,7 +106,7 @@ export function EventResponseForm({ eventId, currentResponse, onSuccess, onCance
                 {...form.register('status')}
                 value={option.value}
                 checked={form.watch('status') === option.value}
-                disabled={responseLoading}
+                disabled={eventLoading}
                 className="sr-only"
               />
               <Label
@@ -115,7 +115,7 @@ export function EventResponseForm({ eventId, currentResponse, onSuccess, onCance
                   form.watch('status') === option.value
                     ? `ring-2 ring-offset-2 ${option.activeColor}`
                     : `border-border hover:shadow-md`
-                } ${responseLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+                } ${eventLoading ? 'cursor-not-allowed opacity-50' : ''}`}
               >
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">
@@ -146,7 +146,7 @@ export function EventResponseForm({ eventId, currentResponse, onSuccess, onCance
           id="comment"
           {...form.register('comment')}
           rows={3}
-          disabled={responseLoading}
+          disabled={eventLoading}
           placeholder="Add any additional notes about your availability..."
         />
         <p className="text-xs text-muted-foreground mt-1">
@@ -160,16 +160,16 @@ export function EventResponseForm({ eventId, currentResponse, onSuccess, onCance
             type="button"
             variant="outline"
             onClick={onCancel}
-            disabled={responseLoading}
+            disabled={eventLoading}
           >
             Cancel
           </Button>
         )}
         <Button
           type="submit"
-          disabled={responseLoading || !form.formState.isValid}
+          disabled={eventLoading || !form.formState.isValid}
         >
-          {responseLoading ? (
+          {eventLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               {currentResponse ? 'Updating...' : 'Saving...'}
