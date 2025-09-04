@@ -37,6 +37,11 @@ interface Event {
     maybe: number
     total: number
   }
+  userResponse?: {
+    id: string
+    status: 'AVAILABLE' | 'UNAVAILABLE' | 'MAYBE'
+    comment: string | null
+  } | null
 }
 
 interface Invite {

@@ -32,12 +32,20 @@ export async function sendEmail({
   `
 
   try {
+    console.log('Sending email to:', originalRecipients)
+    console.log('Test recipient:', testRecipient)
+    console.log('Subject:', subject)
+    console.log('HTML:', html)
+    console.log('From:', from)
+
     const result = await resend.emails.send({
       from,
       to: [testRecipient],
       subject: `[TEST] ${subject}`,
       html: modifiedHtml,
     })
+
+    console.log('Email sent successfully:', result)
 
     return result
   } catch (error) {

@@ -4,7 +4,6 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { format } from 'date-fns'
-import { useRouter } from 'next/navigation'
 import {
   Button,
   Input,
@@ -34,7 +33,6 @@ interface EditEventFormProps {
 
 export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: EditEventFormProps) {
   const { editEvent, editLoading, editError } = useEventsStore()
-  const router = useRouter()
 
   const form = useForm({
     resolver: zodResolver(editEventSchema),
@@ -59,12 +57,8 @@ export function EditEventForm({ eventId, initialData, onSuccess, onCancel }: Edi
   const handleSubmit = async (data: EditEventInput) => {
     try {
       const result = await editEvent(eventId, data)
-      if (result) {
-        if (onSuccess) {
-          onSuccess()
-        } else {
-          router.push(`/events/${eventId}`)
-        }
+      if (result && onSuccess) {
+        onSuccess()
       }
     } catch (error) {
       console.error('Error updating event:', error)

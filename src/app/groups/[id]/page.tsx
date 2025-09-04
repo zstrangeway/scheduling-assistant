@@ -232,8 +232,10 @@ export default function GroupDetailPage() {
         <CardContent>
           <EventList
             groupId={group.id}
+            groupOwnerId={group.owner.id}
             events={group.events}
-            canCreateEvents={group.isOwner || group.isMember}
+            onEventDeleted={() => fetchGroup(groupId)}
+            onEventUpdated={() => fetchGroup(groupId)}
           />
         </CardContent>
       </Card>

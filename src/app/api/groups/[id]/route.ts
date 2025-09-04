@@ -227,7 +227,8 @@ export async function GET(_req: NextRequest, ctx:  {params: Params}) {
           unavailable: event.responses.filter((r) => r.status === 'UNAVAILABLE').length,
           maybe: event.responses.filter((r) => r.status === 'MAYBE').length,
           total: event.responses.length
-        }
+        },
+        userResponse: event.responses.find((r) => r.userId === session.user.id) || null
       }))
     }
 
