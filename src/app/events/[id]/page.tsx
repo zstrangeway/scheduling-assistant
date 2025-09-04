@@ -12,6 +12,22 @@ interface EventPageProps {
   };
 }
 
+type EventResponse = {
+  id: string;
+  status: 'AVAILABLE' | 'UNAVAILABLE' | 'MAYBE';
+  comment: string | null;
+  userId: string;
+  eventId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  };
+}
+
 export default async function EventPage({ params }: EventPageProps) {
   const session = await getServerSession(authOptions);
 
@@ -133,12 +149,12 @@ export default async function EventPage({ params }: EventPageProps) {
   const status = getEventStatus();
 
   const responsesByStatus = {
-    available: event.responses.filter((r) => r.status === "AVAILABLE"),
-    unavailable: event.responses.filter((r) => r.status === "UNAVAILABLE"),
-    maybe: event.responses.filter((r) => r.status === "MAYBE"),
+    available: event.responses.filter((r: EventResponse) => r.status === "AVAILABLE"),
+    unavailable: event.responses.filter((r: EventResponse) => r.status === "UNAVAILABLE"),
+    maybe: event.responses.filter((r: EventResponse) => r.status === "MAYBE"),
   };
 
-  const userResponse = event.responses.find((r) => r.userId === userId);
+  const userResponse = event.responses.find((r: EventResponse) => r.userId === userId);
 
   return (
     <div className="space-y-6">
@@ -397,7 +413,7 @@ export default async function EventPage({ params }: EventPageProps) {
                       ({responses.length})
                     </h4>
                     <div className="space-y-2">
-                      {responses.map((response) => (
+                      {responses.map((response: EventResponse) => (
                         <div
                           key={response.id}
                           className="flex items-start p-3 bg-gray-50 rounded-lg"
