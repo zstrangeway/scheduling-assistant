@@ -1,8 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
+import { db, TransactionClient } from '@/lib/db'
 
 type Params = Promise<{ token: string }>
 
@@ -174,7 +173,7 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
 
     if (action === 'accept') {
       // Create group membership and update invite status in a transaction
-      await db.$transaction(async (tx: Prisma.TransactionClient) => {
+      await db.$transaction(async (tx: TransactionClient) => {
         await tx.groupMember.create({
           data: {
             groupId: invite.group.id,
