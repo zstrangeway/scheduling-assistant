@@ -18,7 +18,7 @@ import { GroupSettingsForm } from "@/components/features/groups";
 import Link from "next/link";
 
 export default function GroupSettingsPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const params = useParams();
   const groupId = params.id as string;
   const { group, loading, error, fetchGroup, reset } = useGroupDetailStore();

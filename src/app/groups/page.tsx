@@ -25,7 +25,7 @@ export default function GroupsPage() {
     return () => {
       reset();
     };
-  }, []);
+  }, [reset]);
 
   if (status === "loading" || loading) {
     return <LoadingSkeleton variant="cards" count={3} />;

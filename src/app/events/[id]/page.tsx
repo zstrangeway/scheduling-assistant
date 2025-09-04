@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import Link from "next/link";
+import Image from "next/image";
 import { EventResponseButton } from "./event-response-button";
 
 interface EventPageProps {
@@ -403,10 +404,12 @@ export default async function EventPage({ params }: EventPageProps) {
                         >
                           <div className="flex items-center flex-1">
                             {response.user.image && (
-                              <img
+                              <Image
                                 className="h-8 w-8 rounded-full mr-3"
                                 src={response.user.image}
                                 alt={response.user.name || ""}
+                                width={32}
+                                height={32}
                               />
                             )}
                             <div className="flex-1">

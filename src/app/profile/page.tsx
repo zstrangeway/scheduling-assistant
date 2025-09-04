@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import Image from 'next/image'
 import ProfileForm from './profile-form'
 import { db } from '@/lib/db'
 
@@ -54,10 +55,12 @@ export default async function ProfilePage() {
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex items-center space-x-4 mb-4">
               {user.image && (
-                <img
+                <Image
                   className="h-16 w-16 rounded-full"
                   src={user.image}
                   alt={user.name || 'User'}
+                  width={64}
+                  height={64}
                 />
               )}
               <div>

@@ -28,7 +28,7 @@ interface EventListProps {
   onEventDeleted?: () => void
 }
 
-export function EventList({ groupId, events, canCreateEvents = false, onEventDeleted }: EventListProps) {
+export function EventList({ events, canCreateEvents = false, onEventDeleted }: EventListProps) {
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null)
 
   const formatDateTime = (dateTime: string) => {

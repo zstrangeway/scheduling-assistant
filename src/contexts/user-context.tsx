@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 
 interface UserProfile {
@@ -34,7 +34,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!session) return
 
     setIsLoading(true)
@@ -52,7 +52,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [session])
 
   const updateProfile = async (data: { name: string }) => {
     if (!session) return
@@ -85,7 +85,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (status === 'authenticated' && session && !profile) {
       fetchProfile()
     }
-  }, [session, status, profile])
+  }, [session, status, profile, fetchProfile])
 
   return (
     <UserContext.Provider
