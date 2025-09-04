@@ -27,12 +27,14 @@ interface CreateEventDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   groupId: string
+  onEventCreated?: () => void
 }
 
 export function CreateEventDialog({ 
   open, 
   onOpenChange, 
-  groupId 
+  groupId,
+  onEventCreated
 }: CreateEventDialogProps) {
   const { createEvent, createLoading, createError } = useEventsStore()
   
@@ -50,7 +52,7 @@ export function CreateEventDialog({
     try {
       const result = await createEvent(groupId, data)
       if (result) {
-        handleClose()
+        handleSuccess()
       }
     } catch (error) {
       console.error('Error creating event:', error)
@@ -60,6 +62,13 @@ export function CreateEventDialog({
   const handleClose = () => {
     form.reset()
     onOpenChange(false)
+  }
+
+  const handleSuccess = () => {
+    if (onEventCreated) {
+      onEventCreated()
+    }
+    handleClose()
   }
 
 
@@ -234,7 +243,7 @@ export function CreateEventDialog({
             </Button>
             <Button
               type="submit"
-              disabled={createLoading || !form.formState.isValid}
+              disabled={createLoading}
             >
               {createLoading ? (
                 <>

@@ -213,10 +213,7 @@ export async function POST(request: NextRequest, ctx: { params: Params }) {
       }
     })
 
-    return NextResponse.json({
-      event,
-      message: 'Event created successfully'
-    })
+    return NextResponse.json(event)
   } catch (error) {
     console.error('Error creating event:', error)
     return NextResponse.json(

@@ -253,6 +253,7 @@ export default function GroupDetailPage() {
         open={createEventDialogOpen}
         onOpenChange={setCreateEventDialogOpen}
         groupId={group.id}
+        onEventCreated={() => fetchGroup(groupId)}
       />
     </div>
   );
