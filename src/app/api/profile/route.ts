@@ -1,13 +1,13 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
   
   if (!session) {
-    return new Response("Unauthorized", { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
@@ -32,29 +32,29 @@ export async function GET() {
     })
 
     if (!user) {
-      return new Response("User not found", { status: 404 })
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     return NextResponse.json(user)
   } catch (error) {
     console.error("Failed to fetch user profile:", error)
-    return new Response("Internal Server Error", { status: 500 })
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   
   if (!session) {
-    return new Response("Unauthorized", { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const body = await request.json()
+    const body = await req.json()
     const { name } = body
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return new Response("Name is required", { status: 400 })
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
     const updatedUser = await db.user.update({
@@ -73,6 +73,6 @@ export async function PUT(request: Request) {
     return NextResponse.json(updatedUser)
   } catch (error) {
     console.error("Failed to update user profile:", error)
-    return new Response("Internal Server Error", { status: 500 })
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

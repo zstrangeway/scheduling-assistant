@@ -1,24 +1,36 @@
 import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-interface RouteParams {
-  params: {
+type Params = Promise<{ id: string }>
+
+type ResponseWithUser = {
+  id: string
+  status: 'AVAILABLE' | 'UNAVAILABLE' | 'MAYBE'
+  comment?: string | null
+  user: {
     id: string
+    name?: string | null
+    email: string
+    image?: string | null
   }
 }
 
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
     const event = await db.event.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         creator: {
           select: {
@@ -81,9 +93,9 @@ export async function GET(request: Request, { params }: RouteParams) {
       event: {
         ...event,
         responseCount: {
-          available: event.responses.filter(r => r.status === 'AVAILABLE').length,
-          unavailable: event.responses.filter(r => r.status === 'UNAVAILABLE').length,
-          maybe: event.responses.filter(r => r.status === 'MAYBE').length,
+          available: event.responses.filter((r: ResponseWithUser) => r.status === 'AVAILABLE').length,
+          unavailable: event.responses.filter((r: ResponseWithUser) => r.status === 'UNAVAILABLE').length,
+          maybe: event.responses.filter((r: ResponseWithUser) => r.status === 'MAYBE').length,
           total: event.responses.length
         }
       }
@@ -97,16 +109,17 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function PUT(request: Request, { params }: RouteParams) {
+export async function PUT(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
     const event = await db.event.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         group: {
           select: {
@@ -131,7 +144,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       )
     }
 
-    const body = await request.json()
+    const body = await req.json()
     const { title, description, startTime, endTime } = body
 
     // Validate required fields
@@ -162,7 +175,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     // Update the event
     const updatedEvent = await db.event.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         title: title.trim(),
         description: description?.trim() || null,
@@ -200,16 +213,17 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
     const event = await db.event.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         group: {
           select: {
@@ -236,7 +250,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     // Delete the event (responses will be cascade deleted)
     await db.event.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({

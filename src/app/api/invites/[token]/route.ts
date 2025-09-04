@@ -1,20 +1,17 @@
 import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-interface RouteParams {
-  params: {
-    token: string
-  }
-}
+type Params = Promise<{ token: string }>
 
 // Get invitation details
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(req: NextRequest, ctx: { params: Params }) {
   try {
+    const { token } = await ctx.params
     const invite = await db.invite.findUnique({
       where: {
-        token: params.token
+        token,
       },
       include: {
         group: {
@@ -80,15 +77,16 @@ export async function GET(request: Request, { params }: RouteParams) {
 }
 
 // Accept or decline invitation
-export async function POST(request: Request, { params }: RouteParams) {
+export async function POST(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { token } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await req.json()
     const { action } = body // 'accept' or 'decline'
 
     if (!action || !['accept', 'decline'].includes(action)) {
@@ -100,7 +98,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const invite = await db.invite.findUnique({
       where: {
-        token: params.token
+        token,
       },
       include: {
         group: {

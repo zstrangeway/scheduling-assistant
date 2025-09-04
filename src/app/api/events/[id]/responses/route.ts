@@ -1,28 +1,24 @@
 import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
+type Params = Promise<{ id: string }>
 
 // Get all responses for an event
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
+
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const eventId = params.id
-
     // Verify user has access to this event (must be group member or owner)
     const event = await db.event.findUnique({
-      where: { id: eventId },
+      where: { id },
       include: {
         group: {
           select: {
@@ -57,7 +53,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     // Get all responses for the event
     const responses = await db.availabilityResponse.findMany({
-      where: { eventId },
+      where: { eventId: id },
       include: {
         user: {
           select: {
@@ -84,19 +80,18 @@ export async function GET(request: Request, { params }: RouteParams) {
 }
 
 // Create or update user's response to an event
-export async function POST(request: Request, { params }: RouteParams) {
+export async function POST(request: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const eventId = params.id
-
     // Verify user has access to this event (must be group member or owner)
     const event = await db.event.findUnique({
-      where: { id: eventId },
+      where: { id },
       include: {
         group: {
           select: {
@@ -144,7 +139,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const response = await db.availabilityResponse.upsert({
       where: {
         eventId_userId: {
-          eventId,
+          eventId: id,
           userId: session.user.id
         }
       },
@@ -154,7 +149,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         updatedAt: new Date()
       },
       create: {
-        eventId,
+        eventId: id,
         userId: session.user.id,
         status,
         comment: comment?.trim() || null

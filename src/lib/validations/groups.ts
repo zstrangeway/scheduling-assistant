@@ -19,13 +19,14 @@ export const updateGroupSchema = z.object({
 
 export const inviteMembersSchema = z.object({
   emails: z
-    .array(emailSchema)
+    .array(z.object({ email: emailSchema }))
     .min(1, 'At least one email is required')
     .max(10, 'Maximum 10 invitations at once')
     .refine(
       (emails) => {
-        const uniqueEmails = new Set(emails.map(email => email.toLowerCase()))
-        return uniqueEmails.size === emails.length
+        const emailValues = emails.map(item => item.email.toLowerCase())
+        const uniqueEmails = new Set(emailValues)
+        return uniqueEmails.size === emailValues.length
       },
       'Duplicate email addresses are not allowed'
     ),

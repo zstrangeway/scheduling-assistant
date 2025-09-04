@@ -3,22 +3,19 @@ import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
+type Params = Promise<{ id: string }>
 
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(req: Request, ctx: {params: Params}) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
     const group = await db.group.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { 
         ownerId: true,
         _count: {
@@ -44,7 +41,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const membership = await db.groupMember.findUnique({
       where: {
         groupId_userId: {
-          groupId: params.id,
+          groupId: id,
           userId: session.user.id
         }
       }
@@ -60,7 +57,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     await db.groupMember.delete({
       where: {
         groupId_userId: {
-          groupId: params.id,
+          groupId: id,
           userId: session.user.id
         }
       }

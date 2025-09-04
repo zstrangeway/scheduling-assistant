@@ -1,25 +1,15 @@
 import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { z } from 'zod'
 
-function validateCreateGroupData(data: Record<string, unknown>) {
-  if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
-    throw new Error('Group name is required')
-  }
-  if (data.name.length > 100) {
-    throw new Error('Group name must be less than 100 characters')
-  }
-  if (data.description && data.description.length > 500) {
-    throw new Error('Description must be less than 500 characters')
-  }
-  return {
-    name: data.name.trim(),
-    description: data.description?.trim() || undefined
-  }
-}
+const createGroupSchema = z.object({
+  name: z.string().min(1, 'Group name is required').max(100, 'Group name must be less than 100 characters'),
+  description: z.string().max(500, 'Description must be less than 500 characters').optional(),
+})
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -27,8 +17,8 @@ export async function POST(request: Request) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const body = await request.json()
-    const validatedData = validateCreateGroupData(body)
+    const body = await req.json()
+    const validatedData = createGroupSchema.parse(body)
 
     const group = await db.group.create({
       data: {
@@ -56,9 +46,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(group)
   } catch (error) {
-    if (error instanceof Error) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: 'Invalid input', details: error.message },
         { status: 400 }
       )
     }
@@ -71,7 +61,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     

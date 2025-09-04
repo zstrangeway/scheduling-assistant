@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
@@ -26,15 +26,12 @@ function validateUpdateGroupData(data: Record<string, unknown>) {
   return updates
 }
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
+type Params = Promise<{ id: string }>
 
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(req: NextRequest, ctx:  {params: Params}) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
@@ -42,7 +39,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const group = await db.group.findFirst({
       where: {
-        id: params.id,
+        id,
         OR: [
           { ownerId: session.user.id },
           { 
@@ -168,20 +165,21 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function PUT(request: Request, { params }: RouteParams) {
+export async function PUT(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await req.json()
     const validatedData = validateUpdateGroupData(body)
 
     const existingGroup = await db.group.findFirst({
       where: {
-        id: params.id,
+        id,
         OR: [
           { ownerId: session.user.id },
           { 
@@ -204,7 +202,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const updatedGroup = await db.group.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         owner: {
@@ -241,16 +239,17 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
     const group = await db.group.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { ownerId: true }
     })
 
@@ -269,7 +268,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     await db.group.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'Group deleted successfully' })

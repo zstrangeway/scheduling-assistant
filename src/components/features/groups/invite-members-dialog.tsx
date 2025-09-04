@@ -17,7 +17,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui'
 import { Mail, Plus, Trash2, Loader2, CheckCircle } from 'lucide-react'
 import { useGroupDetailStore } from '@/stores/group-detail.store'
-import { inviteMembersSchema, type InviteMembersInput } from '@/lib/validations'
+import { inviteMembersSchema, type InviteMembersInput } from '@/lib/validations/groups'
 
 interface InviteMembersDialogProps {
   open: boolean
@@ -35,10 +35,10 @@ export function InviteMembersDialog({
   const [successCount, setSuccessCount] = useState(0)
   const { inviteMembers, inviteLoading, inviteError } = useGroupDetailStore()
 
-  const form = useForm<InviteMembersInput>({
+  const form = useForm({
     resolver: zodResolver(inviteMembersSchema),
     defaultValues: {
-      emails: [''] as string[],
+      emails: [{ email: '' }]
     }
   })
 
@@ -48,7 +48,7 @@ export function InviteMembersDialog({
   })
 
   const addEmailField = () => {
-    append('')
+    append({ email: '' })
   }
 
   const removeEmailField = (index: number) => {
@@ -61,14 +61,15 @@ export function InviteMembersDialog({
     setSuccessCount(0)
 
     try {
-      const result = await inviteMembers(groupId, data.emails)
+      const emailStrings = data.emails.map(item => item.email)
+      const result = await inviteMembers(groupId, emailStrings)
       setSuccessCount(result.successful)
 
       // Update form errors with any failures
-      result.errors.forEach(({ email, error }) => {
-        const fieldIndex = data.emails.findIndex(e => e.toLowerCase() === email.toLowerCase())
+      result.errors.forEach(({ email, error }: { email: string, error: string }) => {
+        const fieldIndex = data.emails.findIndex(item => item.email.toLowerCase() === email.toLowerCase())
         if (fieldIndex !== -1) {
-          form.setError(`emails.${fieldIndex}`, {
+          form.setError(`emails.${fieldIndex}.email`, {
             type: 'manual',
             message: error
           })
@@ -87,13 +88,13 @@ export function InviteMembersDialog({
   }
 
   const handleClose = () => {
-    form.reset({ emails: [''] })
+    form.reset({ emails: [{ email: '' }] })
     setSuccessCount(0)
     onOpenChange(false)
   }
 
   const watchedEmails = form.watch('emails')
-  const validEmailCount = watchedEmails.filter(email => email?.trim()).length
+  const validEmailCount = watchedEmails.filter(item => item.email?.trim()).length
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -133,14 +134,14 @@ export function InviteMembersDialog({
               {fields.map((field, index) => (
                 <div key={field.id} className="flex items-start space-x-2">
                   <FormField
-                    htmlFor={`emails.${index}`}
-                    error={form.formState.errors.emails?.[index]}
+                    htmlFor={`emails.${index}.email`}
+                    error={form.formState.errors.emails?.[index]?.email}
                     className="flex-1"
                   >
                     <Input
-                      id={`emails.${index}`}
+                      id={`emails.${index}.email`}
                       type="email"
-                      {...form.register(`emails.${index}`)}
+                      {...form.register(`emails.${index}.email` as const)}
                       placeholder="Enter email address"
                       disabled={inviteLoading}
                     />

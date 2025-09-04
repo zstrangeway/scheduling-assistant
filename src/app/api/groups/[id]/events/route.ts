@@ -1,36 +1,32 @@
 import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
+type Params = Promise<{ id: string }>
 
-export async function GET(request: Request, { params }: RouteParams) {
+// Get all responses for an event
+export async function GET(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const groupId = params.id
-
     // Verify user is a member of the group
     const membership = await db.groupMember.findUnique({
       where: {
         groupId_userId: {
-          groupId,
+          groupId: id,
           userId: session.user.id
         }
       }
     })
 
     const group = await db.group.findUnique({
-      where: { id: groupId }
+      where: { id }
     })
 
     if (!group || (!membership && group.ownerId !== session.user.id)) {
@@ -42,7 +38,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     // Get events for the group
     const events = await db.event.findMany({
-      where: { groupId },
+      where: { groupId: id },
       include: {
         creator: {
           select: {
@@ -90,28 +86,27 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function POST(request: Request, { params }: RouteParams) {
+export async function POST(request: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const groupId = params.id
-
     // Verify user is a member of the group
     const membership = await db.groupMember.findUnique({
       where: {
         groupId_userId: {
-          groupId,
+          groupId: id,
           userId: session.user.id
         }
       }
     })
 
     const group = await db.group.findUnique({
-      where: { id: groupId }
+      where: { id }
     })
 
     if (!group || (!membership && group.ownerId !== session.user.id)) {
@@ -162,7 +157,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       data: {
         title: title.trim(),
         description: description?.trim() || null,
-        groupId,
+        groupId: id,
         creatorId: session.user.id,
         startTime: start,
         endTime: end,

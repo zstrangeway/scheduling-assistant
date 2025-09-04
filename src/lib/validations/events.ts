@@ -35,7 +35,7 @@ export const editEventSchema = z.object({
 
 export const eventResponseSchema = z.object({
   status: z.enum(['AVAILABLE', 'UNAVAILABLE', 'MAYBE'], {
-    required_error: 'Please select your availability'
+    message: 'Please select your availability'
   }),
   comment: optionalStringSchema.refine(
     (val) => !val || val.length <= 500,

@@ -1,15 +1,11 @@
 import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
 import crypto from 'crypto'
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
+type Params = Promise<{ id: string }>
 
 function validateInviteData(data: Record<string, unknown>) {
   if (!data.email || typeof data.email !== 'string') {
@@ -27,21 +23,22 @@ function validateInviteData(data: Record<string, unknown>) {
 }
 
 // Send invitation
-export async function POST(request: Request, { params }: RouteParams) {
+export async function POST(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await req.json()
     const { email } = validateInviteData(body)
 
     // Check if group exists and user has permission to invite
     const group = await db.group.findFirst({
       where: {
-        id: params.id,
+        id,
         OR: [
           { ownerId: session.user.id },
           { 
@@ -77,7 +74,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       where: { email },
       include: {
         memberships: {
-          where: { groupId: params.id }
+          where: { groupId: id }
         }
       }
     })
@@ -93,7 +90,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const existingInvite = await db.invite.findFirst({
       where: {
         email,
-        groupId: params.id,
+        groupId: id,
         status: 'PENDING',
         expiresAt: {
           gt: new Date()
@@ -119,7 +116,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       data: {
         email,
         token,
-        groupId: params.id,
+        groupId: id,
         senderId: session.user.id,
         expiresAt,
       },
@@ -206,9 +203,10 @@ export async function POST(request: Request, { params }: RouteParams) {
 }
 
 // Get group invitations
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
+    const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
@@ -217,7 +215,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Check if user has permission to view invitations
     const group = await db.group.findFirst({
       where: {
-        id: params.id,
+        id,
         OR: [
           { ownerId: session.user.id },
           { 
@@ -241,7 +239,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const invites = await db.invite.findMany({
       where: {
-        groupId: params.id
+        groupId: id
       },
       include: {
         sender: {
