@@ -1,6 +1,6 @@
 'use client'
 
-import { useUser } from '@/contexts/user-context'
+import { useUserStore } from '@/stores/user.store'
 import { EventCard } from './event-card'
 
 interface EventListProps {
@@ -35,7 +35,7 @@ interface EventListProps {
 }
 
 export function EventList({ events, groupOwnerId, onEventDeleted, onEventUpdated }: EventListProps) {
-  const { profile } = useUser()
+  const { profile } = useUserStore()
   const currentUserId = profile?.id
   const isGroupOwner = currentUserId === groupOwnerId
 

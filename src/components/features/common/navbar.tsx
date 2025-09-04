@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth.store";
+import { useUserStore } from "@/stores/user.store";
 import {
   Button,
   Avatar,
@@ -19,8 +20,9 @@ import { useEffect } from "react";
 export function Navbar() {
   const { data: session, status } = useSession();
   const { user, loading, signOut, setUser, setLoading } = useAuthStore();
+  const { fetchProfile } = useUserStore();
 
-  // Sync NextAuth session with our auth store
+  // Sync NextAuth session with our auth store and fetch profile
   useEffect(() => {
     if (status === "loading") {
       setLoading(true);
@@ -33,11 +35,13 @@ export function Navbar() {
           email: session.user.email || "",
           image: session.user.image,
         });
+        // Fetch detailed profile when user is authenticated
+        fetchProfile();
       } else {
         setUser(null);
       }
     }
-  }, [session, status, setUser, setLoading]);
+  }, [session, status, setUser, setLoading, fetchProfile]);
 
   if (loading) {
     return (

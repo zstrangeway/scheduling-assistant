@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Edit, MoreVertical, Trash2, Calendar, User, Check, X, AlertCircle } from 'lucide-react'
-import { useUser } from '@/contexts/user-context'
+import { useUserStore } from '@/stores/user.store'
 import { useGroupDetailStore } from '@/stores/group-detail.store'
 import { EditEventDialog } from './edit-event-dialog'
 import {
@@ -52,7 +52,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, groupOwnerId, onEventDeleted, onEventUpdated }: EventCardProps) {
-  const { profile } = useUser()
+  const { profile } = useUserStore()
   const { respondToEvent, deleteEvent } = useGroupDetailStore()
   const [deletingEvent, setDeletingEvent] = useState(false)
   const [respondingTo, setRespondingTo] = useState<string | null>(null)
