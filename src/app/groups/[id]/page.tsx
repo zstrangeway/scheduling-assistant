@@ -24,19 +24,7 @@ import {
   LoadingSkeleton,
   Separator,
 } from "@/components/ui";
-
-interface GroupMember {
-  id: string;
-  userId: string;
-  role: string;
-  joinedAt: Date | string;
-  user: {
-    id: string;
-    name?: string | null;
-    email: string;
-    image?: string | null;
-  };
-}
+import type { GroupMemberWithUser } from "@/types";
 
 export default function GroupDetailPage() {
   const { data: session, status } = useSession();
@@ -162,7 +150,7 @@ export default function GroupDetailPage() {
             <MemberCard user={group.owner} isOwner={true} />
 
             {/* Members */}
-            {group.members.map((membership: GroupMember) => (
+            {group.members.map((membership: GroupMemberWithUser) => (
               <MemberCard
                 key={membership.id}
                 user={membership.user}
