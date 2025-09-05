@@ -1,58 +1,25 @@
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import { db, TransactionClient } from '@/lib/db'
+import { 
+  getInviteByToken, 
+  validateInvite, 
+  processInvite 
+} from '@/lib/database/invites'
+import { processInviteSchema } from '@/lib/database/validations'
 
 type Params = Promise<{ token: string }>
 
 // Get invitation details
-export async function GET(req: NextRequest, ctx: { params: Params }) {
+export async function GET(_req: NextRequest, ctx: { params: Params }) {
   try {
     const { token } = await ctx.params
-    const invite = await db.invite.findUnique({
-      where: {
-        token,
-      },
-      include: {
-        group: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-          }
-        },
-        sender: {
-          select: {
-            name: true,
-            email: true,
-          }
-        }
-      }
-    })
+    
+    const { valid, invite, error } = await validateInvite(token)
 
-    if (!invite) {
+    if (!valid || !invite) {
       return NextResponse.json(
-        { error: 'Invitation not found' },
-        { status: 404 }
-      )
-    }
-
-    if (invite.status !== 'PENDING') {
-      return NextResponse.json(
-        { error: 'Invitation has already been processed', status: invite.status },
-        { status: 400 }
-      )
-    }
-
-    if (invite.expiresAt < new Date()) {
-      // Mark as expired
-      await db.invite.update({
-        where: { id: invite.id },
-        data: { status: 'EXPIRED' }
-      })
-      
-      return NextResponse.json(
-        { error: 'Invitation has expired', status: 'EXPIRED' },
+        { error: error || 'Invalid invitation' },
         { status: 400 }
       )
     }
@@ -87,130 +54,31 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
     }
 
     const body = await req.json()
-    const { action } = body // 'accept' or 'decline'
+    const result = processInviteSchema.safeParse(body)
 
-    if (!action || !['accept', 'decline'].includes(action)) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Invalid action. Must be "accept" or "decline"' },
+        { error: 'Invalid input', details: result.error.message },
         { status: 400 }
       )
     }
 
-    const invite = await db.invite.findUnique({
-      where: {
-        token,
-      },
-      include: {
-        group: {
-          select: {
-            id: true,
-            name: true,
-            ownerId: true,
-          }
-        }
-      }
-    })
+    const response = await processInvite(
+      token, 
+      session.user.id, 
+      session.user.email!, 
+      result.data
+    )
 
-    if (!invite) {
-      return NextResponse.json(
-        { error: 'Invitation not found' },
-        { status: 404 }
-      )
-    }
-
-    if (invite.status !== 'PENDING') {
-      return NextResponse.json(
-        { error: 'Invitation has already been processed' },
-        { status: 400 }
-      )
-    }
-
-    if (invite.expiresAt < new Date()) {
-      await db.invite.update({
-        where: { id: invite.id },
-        data: { status: 'EXPIRED' }
-      })
-      
-      return NextResponse.json(
-        { error: 'Invitation has expired' },
-        { status: 400 }
-      )
-    }
-
-    // Check if the user's email matches the invitation email
-    if (session.user.email !== invite.email) {
-      return NextResponse.json(
-        { error: 'This invitation was sent to a different email address' },
-        { status: 400 }
-      )
-    }
-
-    // Check if user is already a member
-    const existingMembership = await db.groupMember.findUnique({
-      where: {
-        groupId_userId: {
-          groupId: invite.group.id,
-          userId: session.user.id
-        }
-      }
-    })
-
-    if (existingMembership || invite.group.ownerId === session.user.id) {
-      // Update invite status but don't create duplicate membership
-      await db.invite.update({
-        where: { id: invite.id },
-        data: { 
-          status: action === 'accept' ? 'ACCEPTED' : 'DECLINED',
-          updatedAt: new Date()
-        }
-      })
-
-      return NextResponse.json({
-        message: 'You are already a member of this group',
-        alreadyMember: true
-      })
-    }
-
-    if (action === 'accept') {
-      // Create group membership and update invite status in a transaction
-      await db.$transaction(async (tx: TransactionClient) => {
-        await tx.groupMember.create({
-          data: {
-            groupId: invite.group.id,
-            userId: session.user.id,
-            role: 'MEMBER'
-          }
-        })
-
-        await tx.invite.update({
-          where: { id: invite.id },
-          data: { 
-            status: 'ACCEPTED',
-            updatedAt: new Date()
-          }
-        })
-      })
-
-      return NextResponse.json({
-        message: 'Invitation accepted successfully',
-        groupId: invite.group.id,
-        groupName: invite.group.name
-      })
-    } else {
-      // Just update the invite status
-      await db.invite.update({
-        where: { id: invite.id },
-        data: { 
-          status: 'DECLINED',
-          updatedAt: new Date()
-        }
-      })
-
-      return NextResponse.json({
-        message: 'Invitation declined'
-      })
-    }
+    return NextResponse.json(response)
   } catch (error) {
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
+
     console.error('Error processing invitation:', error)
     return NextResponse.json(
       { error: 'Failed to process invitation' },

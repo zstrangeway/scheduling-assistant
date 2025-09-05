@@ -1,26 +1,17 @@
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
-import crypto from 'crypto'
+import { 
+  createInvite, 
+  getInvitesForGroup,
+  validateInviteData,
+  checkExistingMembership,
+  checkPendingInvite 
+} from '@/lib/database/invites'
+import { getGroupForAdmin } from '@/lib/database/groups'
 
 type Params = Promise<{ id: string }>
-
-function validateInviteData(data: Record<string, unknown>) {
-  if (!data.email || typeof data.email !== 'string') {
-    throw new Error('Email is required')
-  }
-  
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(data.email)) {
-    throw new Error('Please enter a valid email address')
-  }
-  
-  return {
-    email: data.email.toLowerCase().trim()
-  }
-}
 
 // Send invitation
 export async function POST(req: NextRequest, ctx: { params: Params }) {
@@ -36,31 +27,7 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
     const { email } = validateInviteData(body)
 
     // Check if group exists and user has permission to invite
-    const group = await db.group.findFirst({
-      where: {
-        id,
-        OR: [
-          { ownerId: session.user.id },
-          { 
-            members: { 
-              some: { 
-                userId: session.user.id,
-                role: { in: ['OWNER', 'ADMIN'] }
-              } 
-            } 
-          }
-        ]
-      },
-      include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        }
-      }
-    })
+    const group = await getGroupForAdmin(id, session.user.id)
 
     if (!group) {
       return NextResponse.json(
@@ -70,16 +37,8 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
     }
 
     // Check if user is already a member
-    const existingUser = await db.user.findUnique({
-      where: { email },
-      include: {
-        memberships: {
-          where: { groupId: id }
-        }
-      }
-    })
-
-    if (existingUser && (existingUser.id === group.ownerId || existingUser.memberships.length > 0)) {
+    const isAlreadyMember = await checkExistingMembership(email, id)
+    if (isAlreadyMember) {
       return NextResponse.json(
         { error: 'User is already a member of this group' },
         { status: 400 }
@@ -87,56 +46,19 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
     }
 
     // Check if there's already a pending invitation
-    const existingInvite = await db.invite.findFirst({
-      where: {
-        email,
-        groupId: id,
-        status: 'PENDING',
-        expiresAt: {
-          gt: new Date()
-        }
-      }
-    })
-
-    if (existingInvite) {
+    const hasPendingInvite = await checkPendingInvite(email, id)
+    if (hasPendingInvite) {
       return NextResponse.json(
         { error: 'An invitation has already been sent to this email address' },
         { status: 400 }
       )
     }
 
-    // Generate secure token
-    const token = crypto.randomBytes(32).toString('hex')
-    
-    // Create invitation (expires in 7 days)
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7)
-
-    const invite = await db.invite.create({
-      data: {
-        email,
-        token,
-        groupId: id,
-        senderId: session.user.id,
-        expiresAt,
-      },
-      include: {
-        group: {
-          select: {
-            name: true,
-          }
-        },
-        sender: {
-          select: {
-            name: true,
-            email: true,
-          }
-        }
-      }
-    })
+    // Create invitation
+    const invite = await createInvite(id, session.user.id, email)
 
     // Send email invitation
-    const inviteUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/invite/${token}`
+    const inviteUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/invite/${invite.token}`
     
     const emailContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -167,8 +89,6 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
       })
     } catch (emailError) {
       console.error('Error sending invitation email:', emailError)
-      // Delete the invite if email failed to send
-      await db.invite.delete({ where: { id: invite.id } })
       
       return NextResponse.json(
         { error: 'Failed to send invitation email. Please try again.' },
@@ -203,7 +123,7 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
 }
 
 // Get group invitations
-export async function GET(req: NextRequest, ctx: { params: Params }) {
+export async function GET(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
@@ -213,22 +133,7 @@ export async function GET(req: NextRequest, ctx: { params: Params }) {
     }
 
     // Check if user has permission to view invitations
-    const group = await db.group.findFirst({
-      where: {
-        id,
-        OR: [
-          { ownerId: session.user.id },
-          { 
-            members: { 
-              some: { 
-                userId: session.user.id,
-                role: { in: ['OWNER', 'ADMIN'] }
-              } 
-            } 
-          }
-        ]
-      }
-    })
+    const group = await getGroupForAdmin(id, session.user.id)
 
     if (!group) {
       return NextResponse.json(
@@ -237,23 +142,7 @@ export async function GET(req: NextRequest, ctx: { params: Params }) {
       )
     }
 
-    const invites = await db.invite.findMany({
-      where: {
-        groupId: id
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    const invites = await getInvitesForGroup(id)
 
     return NextResponse.json(invites)
   } catch (error) {

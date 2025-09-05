@@ -1,23 +1,18 @@
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { 
+  getEventById,
+  updateEvent, 
+  deleteEvent, 
+  calculateResponseCount 
+} from '@/lib/database/events'
+import { getUserMembership } from '@/lib/database/memberships'
+import { updateEventSchema } from '@/lib/database/validations'
 
 type Params = Promise<{ id: string }>
 
-type ResponseWithUser = {
-  id: string
-  status: 'AVAILABLE' | 'UNAVAILABLE' | 'MAYBE'
-  comment?: string | null
-  user: {
-    id: string
-    name?: string | null
-    email: string
-    image?: string | null
-  }
-}
-
-export async function GET(req: NextRequest, ctx: { params: Params }) {
+export async function GET(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
@@ -29,41 +24,7 @@ export async function GET(req: NextRequest, ctx: { params: Params }) {
       )
     }
 
-    const event = await db.event.findUnique({
-      where: { id },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          }
-        },
-        group: {
-          select: {
-            id: true,
-            name: true,
-            ownerId: true,
-          }
-        },
-        responses: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              }
-            }
-          },
-          orderBy: {
-            createdAt: 'asc'
-          }
-        }
-      }
-    })
+    const event = await getEventById(id)
 
     if (!event) {
       return NextResponse.json(
@@ -73,14 +34,7 @@ export async function GET(req: NextRequest, ctx: { params: Params }) {
     }
 
     // Verify user has access to this event (must be group member or owner)
-    const membership = await db.groupMember.findUnique({
-      where: {
-        groupId_userId: {
-          groupId: event.groupId,
-          userId: session.user.id
-        }
-      }
-    })
+    const membership = await getUserMembership(event.groupId, session.user.id)
 
     if (!membership && event.group.ownerId !== session.user.id) {
       return NextResponse.json(
@@ -92,12 +46,7 @@ export async function GET(req: NextRequest, ctx: { params: Params }) {
     return NextResponse.json({
       event: {
         ...event,
-        responseCount: {
-          available: event.responses.filter((r: ResponseWithUser) => r.status === 'AVAILABLE').length,
-          unavailable: event.responses.filter((r: ResponseWithUser) => r.status === 'UNAVAILABLE').length,
-          maybe: event.responses.filter((r: ResponseWithUser) => r.status === 'MAYBE').length,
-          total: event.responses.length
-        }
+        responseCount: calculateResponseCount(event.responses)
       }
     })
   } catch (error) {
@@ -118,16 +67,7 @@ export async function PUT(req: NextRequest, ctx: { params: Params }) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const event = await db.event.findUnique({
-      where: { id },
-      include: {
-        group: {
-          select: {
-            ownerId: true,
-          }
-        }
-      }
-    })
+    const event = await getEventById(id)
 
     if (!event) {
       return NextResponse.json(
@@ -145,19 +85,20 @@ export async function PUT(req: NextRequest, ctx: { params: Params }) {
     }
 
     const body = await req.json()
-    const { title, description, startTime, endTime } = body
+    const result = updateEventSchema.safeParse(body)
 
-    // Validate required fields
-    if (!title || !startTime || !endTime) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Title, start time, and end time are required' },
+        { error: 'Invalid input', details: result.error.message },
         { status: 400 }
       )
     }
 
-    // Validate dates
-    const start = new Date(startTime)
-    const end = new Date(endTime)
+    const { title, description, startTime, endTime } = result.data
+
+    // Convert string dates to Date objects and validate
+    const start = new Date(startTime!)
+    const end = new Date(endTime!)
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return NextResponse.json(
@@ -174,30 +115,11 @@ export async function PUT(req: NextRequest, ctx: { params: Params }) {
     }
 
     // Update the event
-    const updatedEvent = await db.event.update({
-      where: { id },
-      data: {
-        title: title.trim(),
-        description: description?.trim() || null,
-        startTime: start,
-        endTime: end,
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          }
-        },
-        group: {
-          select: {
-            id: true,
-            name: true,
-          }
-        }
-      }
+    const updatedEvent = await updateEvent(id, {
+      title,
+      description,
+      startTime: start,
+      endTime: end,
     })
 
     return NextResponse.json({
@@ -213,7 +135,7 @@ export async function PUT(req: NextRequest, ctx: { params: Params }) {
   }
 }
 
-export async function DELETE(req: NextRequest, ctx: { params: Params }) {
+export async function DELETE(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
@@ -222,16 +144,7 @@ export async function DELETE(req: NextRequest, ctx: { params: Params }) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const event = await db.event.findUnique({
-      where: { id },
-      include: {
-        group: {
-          select: {
-            ownerId: true,
-          }
-        }
-      }
-    })
+    const event = await getEventById(id)
 
     if (!event) {
       return NextResponse.json(
@@ -249,9 +162,7 @@ export async function DELETE(req: NextRequest, ctx: { params: Params }) {
     }
 
     // Delete the event (responses will be cascade deleted)
-    await db.event.delete({
-      where: { id }
-    })
+    await deleteEvent(id)
 
     return NextResponse.json({
       message: 'Event deleted successfully'

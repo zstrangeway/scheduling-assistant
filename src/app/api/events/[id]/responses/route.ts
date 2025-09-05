@@ -1,32 +1,28 @@
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { 
+  getEventById, 
+  getEventResponses, 
+  upsertEventResponse 
+} from '@/lib/database/events'
+import { getUserMembership } from '@/lib/database/memberships'
+import { eventResponseSchema } from '@/lib/database/validations'
 
 type Params = Promise<{ id: string }>
 
 // Get all responses for an event
-export async function GET(req: NextRequest, ctx: { params: Params }) {
+export async function GET(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
 
-    
     if (!session || !session.user?.id) {
       return new Response('Unauthorized', { status: 401 })
     }
 
     // Verify user has access to this event (must be group member or owner)
-    const event = await db.event.findUnique({
-      where: { id },
-      include: {
-        group: {
-          select: {
-            ownerId: true,
-          }
-        }
-      }
-    })
+    const event = await getEventById(id)
 
     if (!event) {
       return NextResponse.json(
@@ -35,14 +31,7 @@ export async function GET(req: NextRequest, ctx: { params: Params }) {
       )
     }
 
-    const membership = await db.groupMember.findUnique({
-      where: {
-        groupId_userId: {
-          groupId: event.groupId,
-          userId: session.user.id
-        }
-      }
-    })
+    const membership = await getUserMembership(event.groupId, session.user.id)
 
     if (!membership && event.group.ownerId !== session.user.id) {
       return NextResponse.json(
@@ -52,22 +41,7 @@ export async function GET(req: NextRequest, ctx: { params: Params }) {
     }
 
     // Get all responses for the event
-    const responses = await db.availabilityResponse.findMany({
-      where: { eventId: id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    const responses = await getEventResponses(id)
 
     return NextResponse.json({ responses })
   } catch (error) {
@@ -90,16 +64,7 @@ export async function POST(request: NextRequest, ctx: { params: Params }) {
     }
 
     // Verify user has access to this event (must be group member or owner)
-    const event = await db.event.findUnique({
-      where: { id },
-      include: {
-        group: {
-          select: {
-            ownerId: true,
-          }
-        }
-      }
-    })
+    const event = await getEventById(id)
 
     if (!event) {
       return NextResponse.json(
@@ -108,14 +73,7 @@ export async function POST(request: NextRequest, ctx: { params: Params }) {
       )
     }
 
-    const membership = await db.groupMember.findUnique({
-      where: {
-        groupId_userId: {
-          groupId: event.groupId,
-          userId: session.user.id
-        }
-      }
-    })
+    const membership = await getUserMembership(event.groupId, session.user.id)
 
     if (!membership && event.group.ownerId !== session.user.id) {
       return NextResponse.json(
@@ -125,53 +83,21 @@ export async function POST(request: NextRequest, ctx: { params: Params }) {
     }
 
     const body = await request.json()
-    const { status, comment } = body
+    const result = eventResponseSchema.safeParse(body)
 
-    // Validate status
-    if (!status || !['AVAILABLE', 'UNAVAILABLE', 'MAYBE'].includes(status)) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Invalid status. Must be AVAILABLE, UNAVAILABLE, or MAYBE' },
+        { error: 'Invalid input', details: result.error.message },
         { status: 400 }
       )
     }
 
+    const { status, comment } = result.data
+
     // Create or update the response using upsert
-    const response = await db.availabilityResponse.upsert({
-      where: {
-        eventId_userId: {
-          eventId: id,
-          userId: session.user.id
-        }
-      },
-      update: {
-        status,
-        comment: comment?.trim() || null,
-        updatedAt: new Date()
-      },
-      create: {
-        eventId: id,
-        userId: session.user.id,
-        status,
-        comment: comment?.trim() || null
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          }
-        },
-        event: {
-          select: {
-            id: true,
-            title: true,
-            startTime: true,
-            endTime: true,
-          }
-        }
-      }
+    const response = await upsertEventResponse(id, session.user.id, {
+      status,
+      comment
     })
 
     return NextResponse.json({

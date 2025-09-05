@@ -1,7 +1,14 @@
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { 
+  getEventsForGroup, 
+  createEvent, 
+  calculateResponseCount 
+} from '@/lib/database/events'
+import { getGroupById } from '@/lib/database/groups'
+import { getUserMembership } from '@/lib/database/memberships'
+import { createEventSchema } from '@/lib/database/validations'
 
 type Params = Promise<{ id: string }>
 
@@ -38,7 +45,7 @@ type EventWithRelations = {
   }>
 }
 
-// Get all responses for an event
+// Get all events for a group
 export async function GET(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
@@ -48,19 +55,9 @@ export async function GET(_req: NextRequest, ctx: { params: Params }) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    // Verify user is a member of the group
-    const membership = await db.groupMember.findUnique({
-      where: {
-        groupId_userId: {
-          groupId: id,
-          userId: session.user.id
-        }
-      }
-    })
-
-    const group = await db.group.findUnique({
-      where: { id }
-    })
+    // Verify user has access to the group
+    const membership = await getUserMembership(id, session.user.id)
+    const group = await getGroupById(id)
 
     if (!group || (!membership && group.ownerId !== session.user.id)) {
       return NextResponse.json(
@@ -70,44 +67,12 @@ export async function GET(_req: NextRequest, ctx: { params: Params }) {
     }
 
     // Get events for the group
-    const events = await db.event.findMany({
-      where: { groupId: id },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          }
-        },
-        responses: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        startTime: 'asc'
-      }
-    })
+    const events = await getEventsForGroup(id)
 
     return NextResponse.json({
-      events: events.map((event: EventWithRelations) => ({
+      events: events.map((event) => ({
         ...event,
-        responseCount: {
-          available: event.responses.filter((r) => r.status === 'AVAILABLE').length,
-          unavailable: event.responses.filter((r) => r.status === 'UNAVAILABLE').length,
-          maybe: event.responses.filter((r) => r.status === 'MAYBE').length,
-          total: event.responses.length
-        }
+        responseCount: calculateResponseCount(event.responses)
       }))
     })
   } catch (error) {
@@ -128,19 +93,9 @@ export async function POST(request: NextRequest, ctx: { params: Params }) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    // Verify user is a member of the group
-    const membership = await db.groupMember.findUnique({
-      where: {
-        groupId_userId: {
-          groupId: id,
-          userId: session.user.id
-        }
-      }
-    })
-
-    const group = await db.group.findUnique({
-      where: { id }
-    })
+    // Verify user has access to the group
+    const membership = await getUserMembership(id, session.user.id)
+    const group = await getGroupById(id)
 
     if (!group || (!membership && group.ownerId !== session.user.id)) {
       return NextResponse.json(
@@ -150,67 +105,29 @@ export async function POST(request: NextRequest, ctx: { params: Params }) {
     }
 
     const body = await request.json()
-    const { title, description, startTime, endTime } = body
+    const result = createEventSchema.safeParse(body)
 
-    // Validate required fields
-    if (!title || !startTime || !endTime) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Title, start time, and end time are required' },
+        { error: 'Invalid input', details: result.error.message },
         { status: 400 }
       )
     }
 
-    // Validate dates
+    const { title, description, startTime, endTime } = result.data
+
+    // Convert string dates to Date objects
     const start = new Date(startTime)
     const end = new Date(endTime)
 
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return NextResponse.json(
-        { error: 'Invalid date format' },
-        { status: 400 }
-      )
-    }
-
-    if (start >= end) {
-      return NextResponse.json(
-        { error: 'End time must be after start time' },
-        { status: 400 }
-      )
-    }
-
-    if (start < new Date()) {
-      return NextResponse.json(
-        { error: 'Start time cannot be in the past' },
-        { status: 400 }
-      )
-    }
-
     // Create the event
-    const event = await db.event.create({
-      data: {
-        title: title.trim(),
-        description: description?.trim() || null,
-        groupId: id,
-        creatorId: session.user.id,
-        startTime: start,
-        endTime: end,
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          }
-        },
-        group: {
-          select: {
-            id: true,
-            name: true,
-          }
-        }
-      }
+    const event = await createEvent({
+      title,
+      description,
+      startTime: start,
+      endTime: end,
+      groupId: id,
+      creatorId: session.user.id
     })
 
     return NextResponse.json(event)

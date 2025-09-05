@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { getUserStats } from '@/lib/database/users'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -11,21 +11,13 @@ export async function GET() {
   }
 
   try {
-    const userStats = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        _count: {
-          select: {
-            ownedGroups: true,
-            memberships: true,
-            createdEvents: true,
-            responses: true,
-          }
-        }
-      }
-    })
+    const userStats = await getUserStats(session.user.id)
 
-    const totalGroups = (userStats?._count.ownedGroups || 0) + (userStats?._count.memberships || 0)
+    if (!userStats) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const totalGroups = userStats._count.ownedGroups + userStats._count.memberships
     
     // Get upcoming events (this will be enhanced in later phases)
     const upcomingEvents = 0
@@ -35,8 +27,8 @@ export async function GET() {
       totalGroups,
       upcomingEvents,
       pendingInvites,
-      createdEvents: userStats?._count.createdEvents || 0,
-      responses: userStats?._count.responses || 0
+      createdEvents: userStats._count.createdEvents,
+      responses: userStats._count.responses
     })
   } catch (error) {
     console.error('Dashboard API error:', error)

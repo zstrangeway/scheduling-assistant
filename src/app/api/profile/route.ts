@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { getUserWithStats, updateUser } from "@/lib/database/users"
+import { updateProfileSchema } from "@/lib/database/validations"
 import { NextRequest, NextResponse } from "next/server"
 
 export async function GET() {
@@ -11,25 +12,7 @@ export async function GET() {
   }
 
   try {
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            ownedGroups: true,
-            memberships: true,
-            createdEvents: true,
-            responses: true,
-          }
-        }
-      }
-    })
+    const user = await getUserWithStats(session.user.id)
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -51,24 +34,16 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { name } = body
+    const result = updateProfileSchema.safeParse(body)
 
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    if (!result.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: result.error.message },
+        { status: 400 }
+      )
     }
 
-    const updatedUser = await db.user.update({
-      where: { id: session.user.id },
-      data: { name: name.trim() },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        createdAt: true,
-        updatedAt: true,
-      }
-    })
+    const updatedUser = await updateUser(session.user.id, result.data)
 
     return NextResponse.json(updatedUser)
   } catch (error) {

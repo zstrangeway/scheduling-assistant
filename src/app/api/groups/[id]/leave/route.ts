@@ -1,11 +1,12 @@
 import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { getGroupById } from '@/lib/database/groups'
+import { getUserMembership, removeMembership } from '@/lib/database/memberships'
 
 type Params = Promise<{ id: string }>
 
-export async function DELETE(req: Request, ctx: {params: Params}) {
+export async function DELETE(_req: Request, ctx: {params: Params}) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
@@ -14,15 +15,7 @@ export async function DELETE(req: Request, ctx: {params: Params}) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const group = await db.group.findUnique({
-      where: { id },
-      select: { 
-        ownerId: true,
-        _count: {
-          select: { members: true }
-        }
-      }
-    })
+    const group = await getGroupById(id)
 
     if (!group) {
       return NextResponse.json(
@@ -38,14 +31,7 @@ export async function DELETE(req: Request, ctx: {params: Params}) {
       )
     }
 
-    const membership = await db.groupMember.findUnique({
-      where: {
-        groupId_userId: {
-          groupId: id,
-          userId: session.user.id
-        }
-      }
-    })
+    const membership = await getUserMembership(id, session.user.id)
 
     if (!membership) {
       return NextResponse.json(
@@ -54,14 +40,7 @@ export async function DELETE(req: Request, ctx: {params: Params}) {
       )
     }
 
-    await db.groupMember.delete({
-      where: {
-        groupId_userId: {
-          groupId: id,
-          userId: session.user.id
-        }
-      }
-    })
+    await removeMembership(id, session.user.id)
 
     return NextResponse.json({ message: 'Left group successfully' })
   } catch (error) {
