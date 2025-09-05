@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { GroupMemberRole } from '@prisma/client'
 
 export interface MembershipWithUser {
   id: string
@@ -100,7 +101,7 @@ export async function getUserMemberships(userId: string) {
 /**
  * Create a new membership (when accepting invites)
  */
-export async function createMembership(groupId: string, userId: string, role: string = 'MEMBER') {
+export async function createMembership(groupId: string, userId: string, role: GroupMemberRole = 'MEMBER') {
   return await db.groupMember.create({
     data: {
       groupId,
@@ -133,7 +134,7 @@ export async function createMembership(groupId: string, userId: string, role: st
 export async function updateMembershipRole(
   groupId: string, 
   userId: string, 
-  newRole: string,
+  newRole: GroupMemberRole,
   updatedBy: string
 ): Promise<{ success: boolean; error?: string }> {
   // Check if updater has admin permissions

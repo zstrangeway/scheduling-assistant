@@ -32,7 +32,10 @@ export const ErrorResponses = {
  * Success responses
  */
 export const SuccessResponses = {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  // Response utilities intentionally accept any data type for JSON serialization
   ok: (data?: any) => NextResponse.json(data || { success: true }),
   created: (data: any) => NextResponse.json(data, { status: 201 }),
+  /* eslint-enable @typescript-eslint/no-explicit-any */
   message: (message: string) => NextResponse.json({ message }),
 }

@@ -4,7 +4,7 @@ import { getUserMembership, removeMembership } from '@/lib/database/memberships'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-type Params = { id: string }
+type Params = Promise<{ id: string }>
 
 export async function DELETE(_req: Request, ctx: { params: Params }) {
   try {

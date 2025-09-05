@@ -56,14 +56,14 @@ export const createInviteSchema = z.object({
 
 export const processInviteSchema = z.object({
   action: z.enum(['accept', 'decline'], {
-    errorMap: () => ({ message: 'Action must be "accept" or "decline"' })
+    message: 'Action must be "accept" or "decline"'
   }),
 })
 
 // Response validation schemas
 export const eventResponseSchema = z.object({
   status: z.enum(['AVAILABLE', 'UNAVAILABLE', 'MAYBE'], {
-    errorMap: () => ({ message: 'Status must be AVAILABLE, UNAVAILABLE, or MAYBE' })
+    message: 'Status must be AVAILABLE, UNAVAILABLE, or MAYBE'
   }),
   comment: z.string().max(500, 'Comment must be less than 500 characters').nullish(),
 })
@@ -76,7 +76,7 @@ export const updateProfileSchema = z.object({
 // Membership validation schemas
 export const updateMemberRoleSchema = z.object({
   role: z.enum(['ADMIN', 'MEMBER'], {
-    errorMap: () => ({ message: 'Role must be ADMIN or MEMBER' })
+    message: 'Role must be ADMIN or MEMBER'
   }),
 })
 

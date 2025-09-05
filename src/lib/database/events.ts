@@ -123,7 +123,7 @@ export async function updateEvent(eventId: string, data: {
   startTime?: Date
   endTime?: Date
 }) {
-  const updateData: any = {}
+  const updateData: typeof data = {}
   if (data.title) updateData.title = data.title.trim()
   if (data.description !== undefined) updateData.description = data.description?.trim() || null
   if (data.startTime) updateData.startTime = data.startTime

@@ -12,10 +12,10 @@ import { getGroupForAdmin } from '@/lib/database/groups'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-type Params = { id: string }
+type Params = Promise<{ id: string }>
 
 // Send invitation
-export async function POST(req: NextRequest, ctx: { params: Promise<Params> }) {
+export async function POST(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
