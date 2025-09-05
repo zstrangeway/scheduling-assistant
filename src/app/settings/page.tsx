@@ -1,22 +1,33 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+"use client";
 
-export default async function SettingsPage() {
-  const session = await getServerSession(authOptions)
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  LoadingSkeleton,
+  Badge,
+} from "@/components/ui";
 
-  if (!session) {
-    redirect('/signin')
+export default function SettingsPage() {
+  const { status } = useSession();
+
+  if (status === "loading") {
+    return <LoadingSkeleton variant="detail" count={3} />;
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="md:flex md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
-          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl">
+          <h2 className="text-2xl font-bold leading-7 sm:truncate sm:text-3xl">
             Account Settings
           </h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage your account preferences and privacy settings
           </p>
         </div>
@@ -24,133 +35,134 @@ export default async function SettingsPage() {
 
       <div className="space-y-6">
         {/* Account Information Section */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Account Information
-            </h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900">Profile Information</h4>
-                  <p className="text-sm text-gray-500">Update your name and profile details</p>
-                </div>
-                <a
-                  href="/profile"
-                  className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Edit Profile
-                </a>
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="text-sm font-medium">Profile Information</h4>
+                <p className="text-sm text-muted-foreground">Update your name and profile details</p>
               </div>
+              <Button variant="outline" asChild>
+                <Link href="/profile">Edit Profile</Link>
+              </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Notification Preferences Section */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Notification Preferences
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <div className="flex items-center h-5">
-                  <input
-                    id="email-invites"
-                    name="email-invites"
-                    type="checkbox"
-                    defaultChecked
-                    disabled
-                    className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                  />
-                </div>
-                <div className="ml-3 text-sm">
-                  <label htmlFor="email-invites" className="font-medium text-gray-700">
-                    Group Invitations
-                  </label>
-                  <p className="text-gray-500">Receive email notifications for group invitations</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start">
-                <div className="flex items-center h-5">
-                  <input
-                    id="email-events"
-                    name="email-events"
-                    type="checkbox"
-                    defaultChecked
-                    disabled
-                    className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                  />
-                </div>
-                <div className="ml-3 text-sm">
-                  <label htmlFor="email-events" className="font-medium text-gray-700">
-                    Event Notifications
-                  </label>
-                  <p className="text-gray-500">Receive email notifications for new events</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start">
-                <div className="flex items-center h-5">
-                  <input
-                    id="email-reminders"
-                    name="email-reminders"
-                    type="checkbox"
-                    defaultChecked
-                    disabled
-                    className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                  />
-                </div>
-                <div className="ml-3 text-sm">
-                  <label htmlFor="email-reminders" className="font-medium text-gray-700">
-                    Event Reminders
-                  </label>
-                  <p className="text-gray-500">Receive email reminders for upcoming events</p>
-                </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Notification Preferences</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start space-x-3">
+              <input
+                id="email-invites"
+                name="email-invites"
+                type="checkbox"
+                defaultChecked
+                disabled
+                className="h-4 w-4 rounded border-input focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <div className="grid gap-1.5 leading-none">
+                <label
+                  htmlFor="email-invites"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Group Invitations
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Receive email notifications for group invitations
+                </p>
               </div>
             </div>
-            
-            <div className="mt-4 p-3 bg-blue-50 rounded-md">
-              <p className="text-sm text-blue-700">
+
+            <div className="flex items-start space-x-3">
+              <input
+                id="email-events"
+                name="email-events"
+                type="checkbox"
+                defaultChecked
+                disabled
+                className="h-4 w-4 rounded border-input focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <div className="grid gap-1.5 leading-none">
+                <label
+                  htmlFor="email-events"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Event Notifications
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Receive email notifications for new events
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <input
+                id="email-reminders"
+                name="email-reminders"
+                type="checkbox"
+                defaultChecked
+                disabled
+                className="h-4 w-4 rounded border-input focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <div className="grid gap-1.5 leading-none">
+                <label
+                  htmlFor="email-reminders"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Event Reminders
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Receive email reminders for upcoming events
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-sm text-muted-foreground">
                 ℹ️ Notification preferences will be implemented in a future update.
               </p>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Privacy & Security Section */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Privacy & Security
-            </h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900">Account Data</h4>
-                  <p className="text-sm text-gray-500">Your account is secured with Google OAuth</p>
-                </div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Secure
-                </span>
+        <Card>
+          <CardHeader>
+            <CardTitle>Privacy & Security</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="text-sm font-medium">Account Data</h4>
+                <p className="text-sm text-muted-foreground">
+                  Your account is secured with Google OAuth
+                </p>
               </div>
-              
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900">Data Export</h4>
-                  <p className="text-sm text-gray-500">Export your personal data and activity</p>
-                </div>
-                <button
-                  disabled
-                  className="bg-gray-100 text-gray-400 cursor-not-allowed px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Coming Soon
-                </button>
-              </div>
+              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                Secure
+              </Badge>
             </div>
-          </div>
-        </div>
+
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="text-sm font-medium">Data Export</h4>
+                <p className="text-sm text-muted-foreground">
+                  Export your personal data and activity
+                </p>
+              </div>
+              <Button variant="secondary" disabled>
+                Coming Soon
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

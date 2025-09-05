@@ -100,7 +100,7 @@ export default function InvitePage() {
           </CardHeader>
           <CardContent className="space-y-4 text-center">
             <p className="text-sm text-muted-foreground">
-              You need to sign in to accept this invitation to join "{invite.group.name}".
+              You need to sign in to accept this invitation to join &quot;{invite.group.name}&quot;.
             </p>
             <p className="text-xs text-muted-foreground">
               Invitation sent to: {invite.email}
@@ -160,7 +160,7 @@ export default function InvitePage() {
           Group Invitation
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          You've been invited to join "{invite.group.name}"
+          You&apos;ve been invited to join &quot;{invite.group.name}&quot;
         </p>
       </div>
 
@@ -232,7 +232,7 @@ export default function InvitePage() {
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            This invitation was sent to {invite.email}. Make sure you're signed
+            This invitation was sent to {invite.email}. Make sure you&apos;re signed
             in with the correct account.
           </p>
         </CardContent>

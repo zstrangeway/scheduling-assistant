@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { apiEndpoints } from '@/lib/api'
-import type { InviteDetail, InviteActionRequest, InviteActionResponse } from '@/types'
+import type { InviteDetail, InviteActionResponse } from '@/types'
 
 interface InviteStore {
   invite: InviteDetail | null
@@ -14,7 +14,7 @@ interface InviteStore {
   reset: () => void
 }
 
-export const useInviteStore = create<InviteStore>((set, get) => ({
+export const useInviteStore = create<InviteStore>((set) => ({
   invite: null,
   loading: false,
   error: null,
