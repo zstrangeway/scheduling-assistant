@@ -139,7 +139,10 @@ import type {
   CreateEventRequest,
   UpdateEventRequest,
   EventResponseRequest,
-  UpdateProfileRequest
+  UpdateProfileRequest,
+  InviteActionRequest,
+  InviteActionResponse,
+  InviteGetResponse
 } from '@/types'
 
 // Common API endpoints with proper typing
@@ -160,6 +163,11 @@ export const apiEndpoints = {
   // Group Invites
   inviteToGroup: (groupId: string, email: string) =>
     api.post<ApiSuccessResponse>(`/groups/${groupId}/invites`, { email }),
+
+  // Invites
+  getInvite: (token: string) => api.get<InviteGetResponse>(`/invites/${token}`),
+  processInvite: (token: string, data: InviteActionRequest) =>
+    api.post<InviteActionResponse>(`/invites/${token}`, data),
 
   // Events
   createEvent: (groupId: string, data: CreateEventRequest) => 

@@ -71,6 +71,18 @@ export interface InviteWithSender extends Invite {
   }
 }
 
+export interface InviteDetail extends Invite {
+  group: {
+    id: string
+    name: string
+    description?: string | null
+  }
+  sender: {
+    name?: string | null
+    email: string
+  }
+}
+
 // Dashboard data
 export interface DashboardData {
   totalGroups: number

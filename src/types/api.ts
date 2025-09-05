@@ -1,4 +1,5 @@
 // API request and response types (only when different from entities)
+import type { InviteDetail } from './entities'
 
 // API Request types
 export interface CreateGroupRequest {
@@ -32,6 +33,20 @@ export interface EventResponseRequest {
 
 export interface InviteMemberRequest {
   email: string
+}
+
+export interface InviteActionRequest {
+  action: 'accept' | 'decline'
+}
+
+export interface InviteActionResponse {
+  message: string
+  groupId?: string
+  alreadyMember?: boolean
+}
+
+export interface InviteGetResponse {
+  invite: InviteDetail
 }
 
 export interface UpdateProfileRequest {

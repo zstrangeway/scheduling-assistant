@@ -1,150 +1,242 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import Link from 'next/link'
-import { InviteHandler } from './invite-handler'
+"use client";
 
-interface InvitePageProps {
-  params: {
-    token: string
-  }
-}
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useInviteStore } from "@/stores/invite.store";
+import {
+  ErrorState,
+  LoadingSkeleton,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Alert,
+  AlertDescription,
+} from "@/components/ui";
+import { Mail, Users, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 
-async function getInviteDetails(token: string) {
-  try {
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/invites/${token}`, {
-      cache: 'no-store'
-    })
-    
-    if (!response.ok) {
-      const errorData = await response.json()
-      return { error: errorData.error, status: errorData.status }
-    }
-    
-    const data = await response.json()
-    return { invite: data.invite }
-  } catch (error) {
-    console.error('Error fetching invite:', error)
-    return { error: 'Failed to load invitation' }
-  }
-}
-
-export default async function InvitePage({ params }: InvitePageProps) {
-  const session = await getServerSession(authOptions)
+export default function InvitePage() {
+  const { data: session, status } = useSession();
+  const params = useParams();
+  const router = useRouter();
+  const token = params.token as string;
   
-  const { invite, error, status } = await getInviteDetails(params.token)
+  const {
+    invite,
+    loading,
+    error,
+    processing,
+    result,
+    redirecting,
+    fetchInvite,
+    processInvite,
+    reset,
+  } = useInviteStore();
+
+  useEffect(() => {
+    if (token) {
+      fetchInvite(token);
+    }
+  }, [token, fetchInvite]);
+
+  useEffect(() => {
+    return () => {
+      reset();
+    };
+  }, [reset]);
+
+  const handleInvitation = (action: 'accept' | 'decline') => {
+    processInvite(token, action, (url) => router.push(url));
+  };
+
+  if (status === "loading" || loading) {
+    return <LoadingSkeleton variant="detail" count={3} />;
+  }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 text-red-600">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-              {status === 'EXPIRED' ? 'Invitation Expired' : 'Invalid Invitation'}
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              {error}
-            </p>
-            <div className="mt-6">
-              <Link
-                href="/"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Go to Home
-              </Link>
-            </div>
-          </div>
+      <div className="space-y-6">
+        <ErrorState
+          error={error}
+          title="Error loading invitation"
+          onRetry={() => fetchInvite(token)}
+        />
+        <div className="flex justify-center">
+          <Button asChild>
+            <Link href="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Go to Home
+            </Link>
+          </Button>
         </div>
       </div>
-    )
+    );
+  }
+
+  if (!invite) {
+    return (
+      <div className="space-y-6">
+        <ErrorState
+          error="Invitation not found"
+          title="Invitation not found"
+          onRetry={() => fetchInvite(token)}
+        />
+      </div>
+    );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 text-blue-600">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto h-12 w-12 text-primary mb-4">
+              <Mail className="h-12 w-12" />
             </div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-              Sign in Required
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              You need to sign in to accept this invitation to join &quot;{invite.group.name}&quot;.
+            <CardTitle className="text-2xl">Sign in Required</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              You need to sign in to accept this invitation to join "{invite.group.name}".
             </p>
-            <div className="mt-6 space-y-3">
-              <p className="text-xs text-gray-500">
-                Invitation sent to: {invite.email}
-              </p>
-              <Link
-                href={`/signin?callbackUrl=${encodeURIComponent(`/invite/${params.token}`)}`}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
+            <p className="text-xs text-muted-foreground">
+              Invitation sent to: {invite.email}
+            </p>
+            <Button asChild className="w-full">
+              <Link href={`/signin?callbackUrl=${encodeURIComponent(`/invite/${token}`)}`}>
                 Sign In to Continue
               </Link>
-            </div>
-          </div>
-        </div>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    )
+    );
+  }
+
+  // Success/Error Results
+  if (result) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto h-12 w-12 text-primary mb-4">
+              <CheckCircle className="h-12 w-12" />
+            </div>
+            <CardTitle className="text-2xl">Invitation Processed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>
+                {result.alreadyMember
+                  ? "You are already a member of this group!"
+                  : result.message}
+                {redirecting && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {result.groupId
+                      ? "Redirecting you to the group..."
+                      : "Redirecting you to home..."}
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 text-green-600">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Group Invitation
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            You&apos;ve been invited to join &quot;{invite.group.name}&quot;
-          </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center">
+        <div className="mx-auto h-12 w-12 text-primary mb-4">
+          <Users className="h-12 w-12" />
         </div>
-        
-        <div className="bg-white shadow rounded-lg px-6 py-8">
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">{invite.group.name}</h3>
-              {invite.group.description && (
-                <p className="mt-1 text-sm text-gray-600">{invite.group.description}</p>
-              )}
-            </div>
-            
-            <div className="border-t border-gray-200 pt-4">
-              <dl className="space-y-2">
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Invited by</dt>
-                  <dd className="text-sm text-gray-900">{invite.sender.name || invite.sender.email}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Invitation sent to</dt>
-                  <dd className="text-sm text-gray-900">{invite.email}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Expires</dt>
-                  <dd className="text-sm text-gray-900">
-                    {new Date(invite.expiresAt).toLocaleDateString()} at {new Date(invite.expiresAt).toLocaleTimeString()}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-          
-          <InviteHandler token={params.token} invite={invite} />
-        </div>
+        <h2 className="text-2xl font-bold leading-7 sm:truncate sm:text-3xl">
+          Group Invitation
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          You've been invited to join "{invite.group.name}"
+        </p>
       </div>
+
+      {/* Invitation Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{invite.group.name}</CardTitle>
+          {invite.group.description && (
+            <p className="text-sm text-muted-foreground">
+              {invite.group.description}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3 pt-4 border-t">
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Invited by
+              </dt>
+              <dd className="text-sm">
+                {invite.sender.name || invite.sender.email}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Invitation sent to
+              </dt>
+              <dd className="text-sm">{invite.email}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Expires
+              </dt>
+              <dd className="text-sm">
+                {new Date(invite.expiresAt).toLocaleDateString()} at{" "}
+                {new Date(invite.expiresAt).toLocaleTimeString()}
+              </dd>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3 pt-6 border-t">
+            <Button
+              onClick={() => handleInvitation("accept")}
+              disabled={processing || redirecting}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Accept Invitation
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => handleInvitation("decline")}
+              disabled={processing || redirecting}
+              className="w-full"
+            >
+              {processing ? "Processing..." : "Decline Invitation"}
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground text-center">
+            This invitation was sent to {invite.email}. Make sure you're signed
+            in with the correct account.
+          </p>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }
