@@ -1,12 +1,6 @@
 import { create } from 'zustand'
-
-interface DashboardData {
-  totalGroups: number
-  upcomingEvents: number
-  pendingInvites: number
-  createdEvents: number
-  responses: number
-}
+import { apiEndpoints } from '@/lib/api'
+import type { DashboardData } from '@/types'
 
 interface DashboardStore {
   data: DashboardData | null
@@ -25,12 +19,11 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
     set({ loading: true, error: null })
     
     try {
-      const response = await fetch('/api/dashboard')
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data')
+      const result = await apiEndpoints.getDashboard() as Awaited<ReturnType<typeof apiEndpoints.getDashboard>> & { data: DashboardData }
+      if (!result.success) {
+        throw new Error(result.error)
       }
-      const data = await response.json()
-      set({ data, loading: false })
+      set({ data: result.data, loading: false })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       set({ error: errorMessage, loading: false })

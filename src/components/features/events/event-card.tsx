@@ -279,7 +279,7 @@ export function EventCard({ event, groupOwnerId, onEventDeleted, onEventUpdated 
                   </Badge>
                   {event.userResponse.comment && (
                     <span className="text-xs text-muted-foreground truncate max-w-32">
-                      "{event.userResponse.comment}"
+                      &ldquo;{event.userResponse.comment}&rdquo;
                     </span>
                   )}
                 </div>

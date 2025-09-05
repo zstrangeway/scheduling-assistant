@@ -233,7 +233,11 @@ export default function GroupDetailPage() {
           <EventList
             groupId={group.id}
             groupOwnerId={group.owner.id}
-            events={group.events}
+            events={group.events.map(event => ({
+              ...event,
+              startTime: event.startTime.toISOString(),
+              endTime: event.endTime.toISOString()
+            }))}
             onEventDeleted={() => fetchGroup(groupId)}
             onEventUpdated={() => fetchGroup(groupId)}
           />

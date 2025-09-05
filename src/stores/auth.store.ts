@@ -1,14 +1,8 @@
 import { create } from 'zustand'
 import { signIn, signOut } from 'next-auth/react'
+import type { User } from '@prisma/client'
 
-interface User {
-  id: string
-  name?: string | null
-  email: string
-  image?: string | null
-}
-
-interface AuthState {
+interface AuthStore {
   user: User | null
   loading: boolean
   error: string | null
@@ -22,7 +16,7 @@ interface AuthState {
   reset: () => void
 }
 
-export const useAuthStore = create<AuthState>()((set) => ({
+export const useAuthStore = create<AuthStore>()((set) => ({
   user: null,
   loading: false,
   error: null,

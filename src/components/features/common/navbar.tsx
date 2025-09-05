@@ -31,9 +31,12 @@ export function Navbar() {
       if (session?.user) {
         setUser({
           id: session.user.id || "",
-          name: session.user.name,
+          name: session.user.name || null,
           email: session.user.email || "",
-          image: session.user.image,
+          image: session.user.image || null,
+          emailVerified: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         });
         // Fetch detailed profile when user is authenticated
         fetchProfile();

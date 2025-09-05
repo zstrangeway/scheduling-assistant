@@ -1,80 +1,6 @@
 import { create } from 'zustand'
-
-interface User {
-  id: string
-  name?: string | null
-  email: string
-  image?: string | null
-}
-
-interface GroupMember {
-  id: string
-  userId: string
-  groupId: string
-  role: string
-  joinedAt: Date | string
-  user: User
-}
-
-interface EventResponse {
-  id: string
-  status: string
-  user: User
-}
-
-interface Event {
-  id: string
-  title: string
-  description?: string | null
-  startTime: string
-  endTime: string
-  createdAt: Date | string
-  creator: User
-  responses: EventResponse[]
-  responseCount: {
-    available: number
-    unavailable: number
-    maybe: number
-    total: number
-  }
-  userResponse?: {
-    id: string
-    status: 'AVAILABLE' | 'UNAVAILABLE' | 'MAYBE'
-    comment: string | null
-  } | null
-}
-
-interface Invite {
-  id: string
-  email: string
-  status: string
-  createdAt: Date | string
-  expiresAt: Date | string
-  sender: {
-    name?: string | null
-    email: string
-  }
-}
-
-interface GroupDetail {
-  id: string
-  name: string
-  description?: string | null
-  createdAt: Date | string
-  owner: User
-  members: GroupMember[]
-  events: Event[]
-  invites: Invite[]
-  _count: {
-    members: number
-    events: number
-    invites: number
-  }
-  isOwner: boolean
-  isMember: boolean
-  totalMembers: number
-  currentUserMembership?: GroupMember
-}
+import { apiEndpoints } from '@/lib/api'
+import type { GroupDetail } from '@/types'
 
 interface GroupDetailStore {
   group: GroupDetail | null
@@ -108,15 +34,11 @@ export const useGroupDetailStore = create<GroupDetailStore>((set, get) => ({
   fetchGroup: async (id: string) => {
     set({ loading: true, error: null })
     try {
-      const response = await fetch(`/api/groups/${id}`)
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Group not found')
-        }
-        throw new Error('Failed to fetch group')
+      const result = await apiEndpoints.getGroup(id)
+      if (!result.success) {
+        throw new Error(result.error)
       }
-      const group = await response.json()
-      set({ group, loading: false })
+      set({ group: result.data, loading: false })
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Failed to fetch group', 
@@ -127,27 +49,20 @@ export const useGroupDetailStore = create<GroupDetailStore>((set, get) => ({
 
   updateGroup: async (id: string, data: { name?: string; description?: string }) => {
     try {
-      const response = await fetch(`/api/groups/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
+      const result = await apiEndpoints.updateGroup(id, data)
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update group')
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
-      const updatedGroup = await response.json()
       const currentGroup = get().group
       
       if (currentGroup) {
         set({ 
           group: { 
             ...currentGroup, 
-            ...updatedGroup 
+            name: result.data.name,
+            description: result.data.description 
           } 
         })
       }
@@ -161,13 +76,10 @@ export const useGroupDetailStore = create<GroupDetailStore>((set, get) => ({
 
   deleteGroup: async (id: string) => {
     try {
-      const response = await fetch(`/api/groups/${id}`, {
-        method: 'DELETE',
-      })
+      const result = await apiEndpoints.deleteGroup(id)
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete group')
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
       set({ group: null })
@@ -181,13 +93,10 @@ export const useGroupDetailStore = create<GroupDetailStore>((set, get) => ({
 
   leaveGroup: async (id: string) => {
     try {
-      const response = await fetch(`/api/groups/${id}/leave`, {
-        method: 'POST',
-      })
+      const result = await apiEndpoints.leaveGroup(id)
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to leave group')
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
       set({ group: null })

@@ -1,43 +1,15 @@
 import { create } from 'zustand'
-
-interface GroupOwner {
-  id: string
-  name?: string | null
-  email: string
-  image?: string | null
-}
-
-interface GroupMember {
-  user: {
-    id: string
-    name?: string | null
-    email: string
-    image?: string | null
-  }
-}
-
-interface Group {
-  id: string
-  name: string
-  description?: string | null
-  owner: GroupOwner
-  members: GroupMember[]
-  _count: {
-    members: number
-    events: number
-  }
-  createdAt: Date | string
-  updatedAt: Date | string
-}
+import { apiEndpoints } from '@/lib/api'
+import type { GroupWithCounts } from '@/types'
 
 interface GroupsStore {
-  groups: Group[]
+  groups: GroupWithCounts[]
   loading: boolean
   error: string | null
   createLoading: boolean
   createError: string | null
   fetchGroups: () => Promise<void>
-  createGroup: (data: { name: string; description?: string }) => Promise<Group | null>
+  createGroup: (data: { name: string; description?: string }) => Promise<GroupWithCounts | null>
   reset: () => void
 }
 
@@ -52,12 +24,11 @@ export const useGroupsStore = create<GroupsStore>((set) => ({
     set({ loading: true, error: null })
     
     try {
-      const response = await fetch('/api/groups')
-      if (!response.ok) {
-        throw new Error('Failed to fetch groups')
+      const result = await apiEndpoints.getGroups()
+      if (!result.success) {
+        throw new Error(result.error)
       }
-      const data = await response.json()
-      set({ groups: data, loading: false })
+      set({ groups: result.data, loading: false })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       set({ error: errorMessage, loading: false })
@@ -69,30 +40,22 @@ export const useGroupsStore = create<GroupsStore>((set) => ({
     set({ createLoading: true, createError: null })
     
     try {
-      const response = await fetch('/api/groups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: data.name.trim(),
-          description: data.description?.trim() || undefined,
-        }),
+      const result = await apiEndpoints.createGroup({
+        name: data.name.trim(),
+        description: data.description?.trim() || undefined,
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create group')
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
       // Add the new group to the beginning of the list
       set((state) => ({
-        groups: [result, ...state.groups],
+        groups: [result.data, ...state.groups],
         createLoading: false
       }))
 
-      return result
+      return result.data
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       set({ createError: errorMessage, createLoading: false })

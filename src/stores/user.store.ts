@@ -1,19 +1,6 @@
 import { create } from 'zustand'
-
-interface UserProfile {
-  id: string
-  name: string | null
-  email: string
-  image: string | null
-  createdAt: Date
-  updatedAt: Date
-  _count: {
-    ownedGroups: number
-    memberships: number
-    createdEvents: number
-    responses: number
-  }
-}
+import { apiEndpoints } from '@/lib/api'
+import type { UserProfile } from '@/types'
 
 interface UserStore {
   profile: UserProfile | null
@@ -33,12 +20,11 @@ export const useUserStore = create<UserStore>((set, get) => ({
     set({ loading: true, error: null })
     
     try {
-      const response = await fetch('/api/profile')
-      if (!response.ok) {
-        throw new Error('Failed to fetch profile')
+      const result = await apiEndpoints.getProfile()
+      if (!result.success) {
+        throw new Error(result.error)
       }
-      const profileData = await response.json()
-      set({ profile: profileData, loading: false })
+      set({ profile: result.data, loading: false })
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch profile',
@@ -51,22 +37,17 @@ export const useUserStore = create<UserStore>((set, get) => ({
     set({ loading: true, error: null })
     
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+      const result = await apiEndpoints.updateProfile(data)
 
-      if (!response.ok) {
-        throw new Error('Failed to update profile')
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
-      const updatedProfile = await response.json()
       const currentProfile = get().profile
       
       if (currentProfile) {
         set({ 
-          profile: { ...currentProfile, ...updatedProfile },
+          profile: { ...currentProfile, ...result.data },
           loading: false 
         })
       }

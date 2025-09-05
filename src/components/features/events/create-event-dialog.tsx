@@ -50,10 +50,8 @@ export function CreateEventDialog({
 
   const handleSubmit = async (data: CreateEventInput) => {
     try {
-      const result = await createEvent(groupId, data)
-      if (result) {
-        handleSuccess()
-      }
+      await createEvent(groupId, data)
+      handleSuccess()
     } catch (error) {
       console.error('Error creating event:', error)
     }
