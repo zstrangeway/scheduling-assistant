@@ -1,10 +1,6 @@
-// Groups feature components
+// Groups page components
 export { CreateGroupDialog } from './create-group-dialog'
-export { GroupActions } from './group-actions'
-export { GroupCard } from './group-card'
 export { GroupSection } from './group-section'
 export { GroupsEmptyState } from './groups-empty-state'
+export { GroupCard } from './group-card'
 export { GroupSettingsForm } from './group-settings-form'
-export { InviteCard } from './invite-card'
-export { InviteMembersDialog } from './invite-members-dialog'
-export { MemberCard } from './member-card'

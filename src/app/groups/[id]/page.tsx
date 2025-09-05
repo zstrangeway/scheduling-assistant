@@ -6,13 +6,14 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Users, Calendar, ArrowLeft, Mail, Plus } from "lucide-react";
 import { useGroupDetailStore } from "@/stores/group-detail.store";
-import { EventList, CreateEventDialog } from "@/components/features/events";
 import {
   MemberCard,
   InviteCard,
   GroupActions,
   InviteMembersDialog,
-} from "@/components/features/groups";
+  EventList,
+  CreateEventDialog,
+} from "@/components/features/group-details";
 import {
   Badge,
   Button,
