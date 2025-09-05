@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth'
-import { NextRequest, NextResponse } from 'next/server'
-import { authOptions } from '@/lib/auth'
+import { ErrorResponses, SuccessResponses } from '@/lib/api/responses'
+import { NextRequest } from 'next/server'
 import { 
   getGroupById,
   getGroupWithDetails,
@@ -11,92 +10,18 @@ import {
 import { getUserMembership } from '@/lib/database/memberships'
 import { calculateResponseCount } from '@/lib/database/events'
 import { validateUpdateGroupData } from '@/lib/database/validations'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 type Params = Promise<{ id: string }>
 
-type GroupMember = {
-  id: string
-  userId: string
-  groupId: string
-  role: string
-  joinedAt: Date
-  user: {
-    id: string
-    name: string | null
-    email: string
-    image: string | null
-  }
-}
-
-type GroupWithRelations = {
-  id: string
-  name: string
-  description: string | null
-  ownerId: string
-  createdAt: Date
-  updatedAt: Date
-  owner: {
-    id: string
-    name: string | null
-    email: string
-    image: string | null
-  }
-  members: GroupMember[]
-  events: Array<{
-    id: string
-    title: string
-    description: string | null
-    startTime: Date
-    endTime: Date
-    groupId: string
-    creatorId: string
-    createdAt: Date
-    updatedAt: Date
-    creator: {
-      id: string
-      name: string | null
-      email: string
-      image: string | null
-    }
-    responses: Array<{
-      id: string
-      status: 'AVAILABLE' | 'UNAVAILABLE' | 'MAYBE'
-      comment: string | null
-      eventId: string
-      userId: string
-      createdAt: Date
-      updatedAt: Date
-      user: {
-        id: string
-        name: string | null
-        email: string
-        image: string | null
-      }
-    }>
-  }>
-  invites: Array<{
-    id: string
-    email: string
-    status: string
-    createdAt: Date
-    expiresAt: Date
-    sender: {
-      name: string | null
-      email: string
-    }
-  }>
-  _count: {
-    members: number
-  }
-}
-
-export async function GET(_req: NextRequest, ctx:  {params: Params}) {
+export async function GET(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
-    
+
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return ErrorResponses.unauthorized()
     }
 
     // Check access first
@@ -104,20 +29,14 @@ export async function GET(_req: NextRequest, ctx:  {params: Params}) {
     const group = await getGroupById(id)
 
     if (!group || (!membership && group.ownerId !== session.user.id)) {
-      return NextResponse.json(
-        { error: 'Group not found' },
-        { status: 404 }
-      )
+      return ErrorResponses.groupNotFound()
     }
 
     // Get full group details
     const groupWithDetails = await getGroupWithDetails(id)
 
     if (!groupWithDetails) {
-      return NextResponse.json(
-        { error: 'Group not found' },
-        { status: 404 }
-      )
+      return ErrorResponses.groupNotFound()
     }
 
     // Transform the data to include computed fields
@@ -136,13 +55,10 @@ export async function GET(_req: NextRequest, ctx:  {params: Params}) {
       }))
     }
 
-    return NextResponse.json(transformedGroup)
+    return SuccessResponses.ok(transformedGroup)
   } catch (error) {
     console.error('Error fetching group:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch group' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError('Failed to fetch group')
   }
 }
 
@@ -150,9 +66,9 @@ export async function PUT(req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
-    
+
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return ErrorResponses.unauthorized()
     }
 
     const body = await req.json()
@@ -164,28 +80,19 @@ export async function PUT(req: NextRequest, ctx: { params: Params }) {
     const existingGroup = await getGroupForAdmin(id, session.user.id)
 
     if (!existingGroup) {
-      return NextResponse.json(
-        { error: 'Group not found or insufficient permissions' },
-        { status: 404 }
-      )
+      return ErrorResponses.insufficientPermissions()
     }
 
     const updatedGroup = await updateGroup(id, validatedData)
 
-    return NextResponse.json(updatedGroup)
+    return SuccessResponses.ok(updatedGroup)
   } catch (error) {
     if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      )
+      return ErrorResponses.validationError(error.message)
     }
 
     console.error('Error updating group:', error)
-    return NextResponse.json(
-      { error: 'Failed to update group' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError('Failed to update group')
   }
 }
 
@@ -193,35 +100,26 @@ export async function DELETE(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
-    
+
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return ErrorResponses.unauthorized()
     }
 
     const group = await getGroupById(id)
 
     if (!group) {
-      return NextResponse.json(
-        { error: 'Group not found' },
-        { status: 404 }
-      )
+      return ErrorResponses.groupNotFound()
     }
 
     if (group.ownerId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'Only the group owner can delete the group' },
-        { status: 403 }
-      )
+      return ErrorResponses.ownerCannotDelete()
     }
 
     await deleteGroup(id)
 
-    return NextResponse.json({ message: 'Group deleted successfully' })
+    return SuccessResponses.message('Group deleted successfully')
   } catch (error) {
     console.error('Error deleting group:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete group' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError('Failed to delete group')
   }
 }

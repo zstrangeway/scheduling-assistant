@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth'
-import { NextRequest, NextResponse } from 'next/server'
-import { authOptions } from '@/lib/auth'
+import { ErrorResponses, SuccessResponses } from '@/lib/api/responses'
+import { NextRequest } from 'next/server'
 import { 
   getEventsForGroup, 
   createEvent, 
@@ -9,50 +8,19 @@ import {
 import { getGroupById } from '@/lib/database/groups'
 import { getUserMembership } from '@/lib/database/memberships'
 import { createEventSchema } from '@/lib/database/validations'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 type Params = Promise<{ id: string }>
-
-type EventWithRelations = {
-  id: string
-  title: string
-  description: string | null
-  startTime: Date
-  endTime: Date
-  groupId: string
-  creatorId: string
-  createdAt: Date
-  updatedAt: Date
-  creator: {
-    id: string
-    name: string | null
-    email: string
-    image: string | null
-  }
-  responses: Array<{
-    id: string
-    status: 'AVAILABLE' | 'UNAVAILABLE' | 'MAYBE'
-    comment: string | null
-    eventId: string
-    userId: string
-    createdAt: Date
-    updatedAt: Date
-    user: {
-      id: string
-      name: string | null
-      email: string
-      image: string | null
-    }
-  }>
-}
 
 // Get all events for a group
 export async function GET(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
-    
+
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return ErrorResponses.unauthorized()
     }
 
     // Verify user has access to the group
@@ -60,16 +28,13 @@ export async function GET(_req: NextRequest, ctx: { params: Params }) {
     const group = await getGroupById(id)
 
     if (!group || (!membership && group.ownerId !== session.user.id)) {
-      return NextResponse.json(
-        { error: 'Group not found or access denied' },
-        { status: 404 }
-      )
+      return ErrorResponses.insufficientPermissions()
     }
 
     // Get events for the group
     const events = await getEventsForGroup(id)
 
-    return NextResponse.json({
+    return SuccessResponses.ok({
       events: events.map((event) => ({
         ...event,
         responseCount: calculateResponseCount(event.responses)
@@ -77,10 +42,7 @@ export async function GET(_req: NextRequest, ctx: { params: Params }) {
     })
   } catch (error) {
     console.error('Error fetching events:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch events' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError('Failed to fetch events')
   }
 }
 
@@ -90,7 +52,7 @@ export async function POST(request: NextRequest, ctx: { params: Params }) {
     const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return ErrorResponses.unauthorized()
     }
 
     // Verify user has access to the group
@@ -98,20 +60,14 @@ export async function POST(request: NextRequest, ctx: { params: Params }) {
     const group = await getGroupById(id)
 
     if (!group || (!membership && group.ownerId !== session.user.id)) {
-      return NextResponse.json(
-        { error: 'Group not found or access denied' },
-        { status: 404 }
-      )
+      return ErrorResponses.insufficientPermissions()
     }
 
     const body = await request.json()
     const result = createEventSchema.safeParse(body)
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: result.error.message },
-        { status: 400 }
-      )
+      return ErrorResponses.validationError(result.error.message)
     }
 
     const { title, description, startTime, endTime } = result.data
@@ -130,12 +86,9 @@ export async function POST(request: NextRequest, ctx: { params: Params }) {
       creatorId: session.user.id
     })
 
-    return NextResponse.json(event)
+    return SuccessResponses.ok(event)
   } catch (error) {
     console.error('Error creating event:', error)
-    return NextResponse.json(
-      { error: 'Failed to create event' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError()
   }
 }

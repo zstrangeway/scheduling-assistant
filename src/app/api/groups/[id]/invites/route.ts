@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth'
-import { NextRequest, NextResponse } from 'next/server'
-import { authOptions } from '@/lib/auth'
+import { ErrorResponses, SuccessResponses } from '@/lib/api/responses'
+import { NextRequest } from 'next/server'
 import { sendEmail } from '@/lib/email'
 import { 
   createInvite, 
@@ -10,17 +9,19 @@ import {
   checkPendingInvite 
 } from '@/lib/database/invites'
 import { getGroupForAdmin } from '@/lib/database/groups'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
-type Params = Promise<{ id: string }>
+type Params = { id: string }
 
 // Send invitation
-export async function POST(req: NextRequest, ctx: { params: Params }) {
+export async function POST(req: NextRequest, ctx: { params: Promise<Params> }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
-    
+
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return ErrorResponses.unauthorized()
     }
 
     const body = await req.json()
@@ -30,28 +31,19 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
     const group = await getGroupForAdmin(id, session.user.id)
 
     if (!group) {
-      return NextResponse.json(
-        { error: 'Group not found or insufficient permissions' },
-        { status: 404 }
-      )
+      return ErrorResponses.insufficientPermissions()
     }
 
     // Check if user is already a member
     const isAlreadyMember = await checkExistingMembership(email, id)
     if (isAlreadyMember) {
-      return NextResponse.json(
-        { error: 'User is already a member of this group' },
-        { status: 400 }
-      )
+      return ErrorResponses.alreadyMember()
     }
 
     // Check if there's already a pending invitation
     const hasPendingInvite = await checkPendingInvite(email, id)
     if (hasPendingInvite) {
-      return NextResponse.json(
-        { error: 'An invitation has already been sent to this email address' },
-        { status: 400 }
-      )
+      return ErrorResponses.pendingInviteExists()
     }
 
     // Create invitation
@@ -90,13 +82,10 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
     } catch (emailError) {
       console.error('Error sending invitation email:', emailError)
       
-      return NextResponse.json(
-        { error: 'Failed to send invitation email. Please try again.' },
-        { status: 500 }
-      )
+      return ErrorResponses.internalError('Failed to send invitation email. Please try again.')
     }
 
-    return NextResponse.json({
+    return SuccessResponses.ok({
       message: 'Invitation sent successfully',
       invite: {
         id: invite.id,
@@ -108,17 +97,11 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
     })
   } catch (error) {
     if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      )
+      return ErrorResponses.validationError(error.message)
     }
 
     console.error('Error sending invitation:', error)
-    return NextResponse.json(
-      { error: 'Failed to send invitation' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError('Failed to send invitation')
   }
 }
 
@@ -127,29 +110,23 @@ export async function GET(_req: NextRequest, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
-    
+
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return ErrorResponses.unauthorized()
     }
 
     // Check if user has permission to view invitations
     const group = await getGroupForAdmin(id, session.user.id)
 
     if (!group) {
-      return NextResponse.json(
-        { error: 'Group not found or insufficient permissions' },
-        { status: 404 }
-      )
+      return ErrorResponses.insufficientPermissions()
     }
 
     const invites = await getInvitesForGroup(id)
 
-    return NextResponse.json(invites)
+    return SuccessResponses.ok(invites)
   } catch (error) {
     console.error('Error fetching invitations:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch invitations' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError('Failed to fetch invitations')
   }
 }

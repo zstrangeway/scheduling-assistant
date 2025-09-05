@@ -1,53 +1,50 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { ErrorResponses, SuccessResponses } from "@/lib/api/responses"
 import { getUserWithStats, updateUser } from "@/lib/database/users"
 import { updateProfileSchema } from "@/lib/database/validations"
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
-    const user = await getUserWithStats(session.user.id)
+    const session = await getServerSession(authOptions)
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!session || !session.user?.id) {
+      return ErrorResponses.unauthorized()
     }
 
-    return NextResponse.json(user)
+    const userProfile = await getUserWithStats(session.user.id)
+
+    if (!userProfile) {
+      return ErrorResponses.userNotFound()
+    }
+
+    return SuccessResponses.ok(userProfile)
   } catch (error) {
     console.error("Failed to fetch user profile:", error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return ErrorResponses.internalError()
   }
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await getServerSession(authOptions)
-  
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session || !session.user?.id) {
+      return ErrorResponses.unauthorized()
+    }
+
     const body = await req.json()
     const result = updateProfileSchema.safeParse(body)
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: result.error.message },
-        { status: 400 }
-      )
+      return ErrorResponses.validationError(result.error.message)
     }
 
     const updatedUser = await updateUser(session.user.id, result.data)
-
-    return NextResponse.json(updatedUser)
+    return SuccessResponses.ok(updatedUser)
   } catch (error) {
     console.error("Failed to update user profile:", error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return ErrorResponses.internalError()
   }
 }

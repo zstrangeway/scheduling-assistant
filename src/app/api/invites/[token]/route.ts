@@ -1,12 +1,9 @@
 import { getServerSession } from 'next-auth'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import { 
-  getInviteByToken, 
-  validateInvite, 
-  processInvite 
-} from '@/lib/database/invites'
+import { validateInvite, processInvite } from '@/lib/database/invites'
 import { processInviteSchema } from '@/lib/database/validations'
+import { ErrorResponses, SuccessResponses } from '@/lib/api/responses'
 
 type Params = Promise<{ token: string }>
 
@@ -18,13 +15,10 @@ export async function GET(_req: NextRequest, ctx: { params: Params }) {
     const { valid, invite, error } = await validateInvite(token)
 
     if (!valid || !invite) {
-      return NextResponse.json(
-        { error: error || 'Invalid invitation' },
-        { status: 400 }
-      )
+      return ErrorResponses.validationError(error || 'Invalid invitation')
     }
 
-    return NextResponse.json({
+    return SuccessResponses.ok({
       invite: {
         id: invite.id,
         email: invite.email,
@@ -36,10 +30,7 @@ export async function GET(_req: NextRequest, ctx: { params: Params }) {
     })
   } catch (error) {
     console.error('Error fetching invitation:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch invitation' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError('Failed to fetch invitation')
   }
 }
 
@@ -50,17 +41,14 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
     const { token } = await ctx.params
     
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return ErrorResponses.unauthorized()
     }
 
     const body = await req.json()
     const result = processInviteSchema.safeParse(body)
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: result.error.message },
-        { status: 400 }
-      )
+      return ErrorResponses.validationError(result.error.message)
     }
 
     const response = await processInvite(
@@ -70,19 +58,13 @@ export async function POST(req: NextRequest, ctx: { params: Params }) {
       result.data
     )
 
-    return NextResponse.json(response)
+    return SuccessResponses.ok(response)
   } catch (error) {
     if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      )
+      return ErrorResponses.validationError(error.message)
     }
 
     console.error('Error processing invitation:', error)
-    return NextResponse.json(
-      { error: 'Failed to process invitation' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError('Failed to process invitation')
   }
 }

@@ -1,6 +1,7 @@
 import { NextAuthOptions } from 'next-auth'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import GoogleProvider from 'next-auth/providers/google'
+import { getServerSession } from 'next-auth'
 import { db } from '@/lib/db'
 
 export const authOptions: NextAuthOptions = {
@@ -38,4 +39,12 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
+}
+
+/**
+ * Get server session with guaranteed user (for use in middleware-protected routes)
+ */
+export async function getRequiredServerSession() {
+  const session = await getServerSession(authOptions)
+  return session as typeof session & { user: { id: string; email: string } }
 }

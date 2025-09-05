@@ -16,6 +16,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
+    // Protected pages only
     '/dashboard/:path*',
     '/groups/:path*',
     '/events/:path*',

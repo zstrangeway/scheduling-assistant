@@ -1,53 +1,40 @@
-import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
-import { authOptions } from '@/lib/auth'
+import { ErrorResponses, SuccessResponses } from '@/lib/api/responses'
 import { getGroupById } from '@/lib/database/groups'
 import { getUserMembership, removeMembership } from '@/lib/database/memberships'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
-type Params = Promise<{ id: string }>
+type Params = { id: string }
 
-export async function DELETE(_req: Request, ctx: {params: Params}) {
+export async function DELETE(_req: Request, ctx: { params: Params }) {
   try {
     const session = await getServerSession(authOptions)
     const { id } = await ctx.params
     
     if (!session || !session.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+      return ErrorResponses.unauthorized()
     }
-
+    
     const group = await getGroupById(id)
 
     if (!group) {
-      return NextResponse.json(
-        { error: 'Group not found' },
-        { status: 404 }
-      )
+      return ErrorResponses.groupNotFound()
     }
 
     if (group.ownerId === session.user.id) {
-      return NextResponse.json(
-        { error: 'Group owner cannot leave the group. Transfer ownership or delete the group instead.' },
-        { status: 400 }
-      )
+      return ErrorResponses.cannotLeaveAsOwner()
     }
 
     const membership = await getUserMembership(id, session.user.id)
 
     if (!membership) {
-      return NextResponse.json(
-        { error: 'You are not a member of this group' },
-        { status: 400 }
-      )
+      return ErrorResponses.notAMember()
     }
 
     await removeMembership(id, session.user.id)
-
-    return NextResponse.json({ message: 'Left group successfully' })
+    return SuccessResponses.message('Left group successfully')
   } catch (error) {
     console.error('Error leaving group:', error)
-    return NextResponse.json(
-      { error: 'Failed to leave group' },
-      { status: 500 }
-    )
+    return ErrorResponses.internalError('Failed to leave group')
   }
 }

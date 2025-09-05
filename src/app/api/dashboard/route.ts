@@ -1,20 +1,20 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { ErrorResponses, SuccessResponses } from '@/lib/api/responses'
 import { getUserStats } from '@/lib/database/users'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session || !session.user?.id) {
+      return ErrorResponses.unauthorized()
+    }
+    
     const userStats = await getUserStats(session.user.id)
 
     if (!userStats) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ErrorResponses.userNotFound()
     }
 
     const totalGroups = userStats._count.ownedGroups + userStats._count.memberships
@@ -23,7 +23,7 @@ export async function GET() {
     const upcomingEvents = 0
     const pendingInvites = 0
 
-    return NextResponse.json({
+    return SuccessResponses.ok({
       totalGroups,
       upcomingEvents,
       pendingInvites,
@@ -32,6 +32,6 @@ export async function GET() {
     })
   } catch (error) {
     console.error('Dashboard API error:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return ErrorResponses.internalError()
   }
 }
